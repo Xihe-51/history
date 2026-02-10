@@ -4,9 +4,7 @@
     <div class="auth-card">
       <!-- Logo区域 -->
       <div class="logo-wrapper">
-        <img src="@/assets/logo.jpg" alt="华夏天澜" class="logo" v-if="logoExists" @error="logoExists = false">
-        <div class="logo-placeholder" v-else>华夏天澜</div>
-        <h2 class="title">{{ isLogin ? '用户登录' : '用户注册' }}</h2>
+        <h2 class="title">华夏天澜</h2>
       </div>
 
       <!-- 表单区域 -->
@@ -53,14 +51,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { ElForm, ElFormItem, ElInput, ElButton, ElMessage } from 'element-plus';
-// 只导入对外暴露的公开类型
 import type { FormInstance, FormRules } from 'element-plus';
 import { register, login } from '@/api/user';
 import { useRouter } from 'vue-router';
 
 const router = useRouter()
+
+onMounted(() => {
+  let token = localStorage.getItem("token");
+  if (token) {
+    router.push('/timeline')
+  }
+})
 
 // 表单引用
 const authFormRef = ref<FormInstance>();
@@ -68,8 +72,6 @@ const authFormRef = ref<FormInstance>();
 const submitLoading = ref(false);
 // 切换登录/注册
 const isLogin = ref(true);
-// Logo是否存在
-const logoExists = ref(true);
 
 // 定义表单数据接口
 interface AuthForm {
@@ -142,7 +144,12 @@ const handleSubmit = async () => {
       console.log('登录接口返回数据：', response.data);
       if (response.data.code === 200) {
         localStorage.setItem("token", response.data.data.token)
-        router.push('/home')
+        if (response.data.data.role === "user") {
+          router.push('/timeline')
+        }
+        else {
+          router.push('/admin')
+        }
         ElMessage.success('登录成功');
       }
       else {
@@ -201,29 +208,10 @@ const handleSubmit = async () => {
   margin-bottom: 30px;
 }
 
-.logo {
-  width: 80px;
-  height: 80px;
-  object-fit: contain;
-  margin-bottom: 15px;
-}
-
-.logo-placeholder {
-  width: 80px;
-  height: 80px;
-  line-height: 80px;
-  margin: 0 auto 15px;
-  background: linear-gradient(90deg, #4361ee, #3a0ca3);
-  color: white;
-  border-radius: 50%;
-  font-size: 16px;
-  font-weight: bold;
-}
-
 .title {
   font-size: 24px;
-  color: #1e293b;
-  font-weight: 600;
+  color: #3b3a1e;
+  font-weight: 1000;
   margin: 0;
 }
 
