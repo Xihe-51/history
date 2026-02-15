@@ -83,6 +83,9 @@
         role, status, last_login_time, created_time, updated_time
         FROM user
         <where>
+            <if test="username != null and username != ''">
+                AND username LIKE CONCAT('%', #{username}, '%')
+            </if>
             <if test="role != null and role != ''">
                 AND role = #{role}
             </if>
@@ -98,12 +101,11 @@
         DELETE FROM user WHERE id = #{id}
     </delete>
 
-    <!-- 更新用户最后登录时间 -->
+    <!-- 5. 更新用户最后登录时间 -->
     <update id="updateLastLoginTime">
         UPDATE user
         SET last_login_time = #{lastLoginTime},
             updated_time = NOW()
         WHERE id = #{id}
     </update>
-
 </mapper>

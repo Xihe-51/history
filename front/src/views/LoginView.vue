@@ -21,7 +21,7 @@
 
         <!-- 密码 -->
         <el-form-item prop="password">
-          <el-input v-model="form.password" placeholder="请输入密码" prefix-icon="Lock" clearable show-password />
+          <el-input v-model="form.password" placeholder="请输入密码" @keyup.enter.native="handleSubmit" prefix-icon="Lock" clearable show-password />
         </el-form-item>
 
         <!-- 确认密码 (仅注册显示) -->

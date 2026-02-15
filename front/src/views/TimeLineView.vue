@@ -4,7 +4,7 @@
 		<top-component />
 		<!-- 主内容区域 -->
 		<main class="app-main">
-
+			
 		</main>
 	</div>
 </template>
@@ -21,7 +21,6 @@ import topComponent from '@/components/topComponent.vue';
 	width: 100%;
 	display: flex;
 	flex-direction: column;
-	background-color: #f9f5f0;
 	font-family: "Microsoft YaHei", "SimHei", sans-serif;
 	color: #333;
 }

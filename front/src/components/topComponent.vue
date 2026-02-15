@@ -78,11 +78,11 @@ const logout = () => {
 <style scoped>
 /* 顶部导航栏 */
 .app-header {
-    background-color: #fff;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     position: sticky;
     top: 0;
     z-index: 100;
+    background: #f9f5f0;
 }
 
 .header-container {
@@ -99,7 +99,7 @@ const logout = () => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: 70%;
+    gap: 120px;
 }
 
 .logo-section {
@@ -135,7 +135,7 @@ const logout = () => {
     text-decoration: none;
     border-radius: 4px;
     transition: all 0.3s ease;
-    font-size: 14px;
+    font-size: 18px;
 }
 
 .nav-item:hover {

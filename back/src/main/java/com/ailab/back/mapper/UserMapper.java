@@ -40,9 +40,15 @@ public interface UserMapper extends BaseMapper<User> {
      * @param page 分页对象（MyBatis-Plus分页插件自动处理）
      * @param role 角色筛选条件（可选）
      * @param status 状态筛选条件（可选）
+     * @param username 用户名模糊查询条件（可选）
      * @return 分页后的用户列表
      */
-    Page<User> selectUserBatchByPage(Page<User> page, @Param("role") String role, @Param("status") Byte status);
+    Page<User> selectUserBatchByPage(
+            Page<User> page,
+            @Param("role") String role,
+            @Param("status") Byte status,
+            @Param("username") String username
+    );
 
     /**
      * 4. 根据ID删除用户

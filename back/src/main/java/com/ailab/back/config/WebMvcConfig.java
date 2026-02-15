@@ -1,5 +1,6 @@
 package com.ailab.back.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -19,7 +20,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 @EnableWebSecurity // 开启Spring Security配置
 public class WebMvcConfig implements WebMvcConfigurer {
+    // 从yml配置文件中读取图片存储路径
+    @Value("${image.upload.path}")
+    private String imageUploadPath;
 
+    // 从yml配置文件中读取访问前缀
+    @Value("${image.access.prefix}")
+    private String imageAccessPrefix;
     /**
      * 配置跨域请求
      * 解决前后端分离时的跨域问题
@@ -39,13 +46,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
      */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // 物理图片存储路径（注意：Windows系统用双反斜杠，或单反斜杠+转义）
-        String imagePath = "file:E://test//back//src//main//resources//static//images//";
-
-        // 映射规则：前端访问 http://127.0.0.1:8080/images/xxx.jpg 时，直接读取物理路径的文件。静态资源目录（resources/static）的文件变更不会被实时加载
-        registry.addResourceHandler("/images/**") // URL路径匹配
-                .addResourceLocations(imagePath) // 物理目录
-                .setCachePeriod(0);
+        // 使用配置文件中的路径和前缀
+        registry.addResourceHandler(imageAccessPrefix + "**") // URL路径匹配
+                .addResourceLocations(imageUploadPath) // 物理目录
+                .setCachePeriod(0); // 关闭缓存，方便开发调试
     }
 
     // ======================== Spring Security相关配置（适配6.x版本） ========================

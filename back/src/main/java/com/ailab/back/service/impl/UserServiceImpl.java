@@ -4,6 +4,7 @@ import com.ailab.back.mapper.UserMapper;
 import com.ailab.back.service.UserService;
 import com.ailab.back.utils.JwtUtil;
 import com.ailab.back.vo.ResultVO;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -134,5 +135,44 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         resultData.put("role", loginUser.getRole());
 
         return ResultVO.success("登录成功").setData(resultData);
+    }
+
+    @Override
+    public ResultVO<Page<User>> queryUserBatchByPage(Integer pageNum, Integer pageSize, String role, Byte status, String username) {
+        // 1. 校验分页参数，避免非法值（比如页码小于1、每页条数过大）
+        pageNum = pageNum == null || pageNum < 1 ? 1 : pageNum;
+        pageSize = pageSize == null || pageSize < 1 || pageSize > 100 ? 10 : pageSize;
+
+        // 2. 创建 MyBatis-Plus 分页对象
+        Page<User> page = new Page<>(pageNum, pageSize);
+
+        // 3. 调用 Mapper 层的分页查询方法
+        Page<User> userPage = userMapper.selectUserBatchByPage(page, role, status, username);
+
+        return ResultVO.<Page<User>>success().setData(userPage);
+    }
+
+    @Override
+    public ResultVO<User> updateUserById(User user) {
+        if (StringUtils.hasText(user.getPasswordHash())){
+            String encodedPassword = passwordEncoder.encode(user.getPasswordHash());
+            user.setPasswordHash(encodedPassword);
+        }
+        int success = userMapper.updateUserById(user);
+        if(success>0){
+            return ResultVO.success("更新成功");
+        } else {
+            return ResultVO.error("更新失败");
+        }
+    }
+
+    @Override
+    public ResultVO<User> deleteUserById(Long id) {
+        int success = userMapper.deleteUserById(id);
+        if (success>0){
+            return ResultVO.success("删除成功");
+        } else {
+            return ResultVO.error("删除失败");
+        }
     }
 }

@@ -80,6 +80,17 @@ spring:
         # true - SQL 会格式化输出，便于阅读
         # false - SQL 单行输出
         format_sql: true
+# ============================================
+# 图片文件配置
+# ============================================
+image:
+  # 图片存储的物理路径
+  upload:
+    path: file:E:/history/back/src/main/resources/static/images/
+  # 前端访问的URL前缀
+  access:
+    prefix: /images/
+
 
 # ============================================
 # 日志配置

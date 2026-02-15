@@ -17,6 +17,29 @@ const router = createRouter({
 			path: '/timeline',
 			name: 'timeline',
 			component: () => import("@/views/TimeLineView.vue"),
+		},
+		{
+			path: '/admin',
+			name: 'admin',
+			redirect: '/admin/user-management', // 默认子路由
+			component: () => import("@/views/admin/AdminView.vue"),
+			children: [
+				{
+					path: 'user-management',
+					name: 'user-management',
+					component: () => import("@/views/admin/UserManagementView.vue"),
+				},
+				{
+					path: 'science-data-maintenance',
+					name: 'science-data-maintenance',
+					component: () => import("@/views/admin/ScienceDataMaintenanceView.vue"),
+				},
+				{
+					path: 'data-management',
+					name: 'data-management',
+					component: () => import("@/views/admin/DataManagementView.vue"),
+				}
+			]
 		}
 	]
 })
