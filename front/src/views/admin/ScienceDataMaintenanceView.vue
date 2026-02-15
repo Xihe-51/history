@@ -18,6 +18,7 @@
             style="width: 150px"
             @change="handleDynastyChange"
             filterable
+            clearable
           >
             <el-option
               v-for="item in dynastyList"
@@ -34,6 +35,7 @@
             @change="handleSubTypeChange"
             :disabled="!selectedDynastyId"
             style="width: 180px"
+            clearable
           >
             <el-option label="朝代阶段" value="dynastyStage" />
             <el-option label="历史事件" value="historicalEvent" />
@@ -50,7 +52,9 @@
           @keyup.enter="handleSearch"
         >
           <template #append>
-            <el-button icon="el-icon-search" @click="handleSearch" />
+            <el-button @click="handleSearch">
+                <el-icon><Search /></el-icon>
+            </el-button>
           </template>
         </el-input>
 
@@ -99,13 +103,13 @@
       stripe
       style="width: 100%; margin-top: 20px"
       @selection-change="handleSelectionChange"
+      :header-cell-style="{ 'text-align': 'center' }" :cell-style="{ 'text-align': 'center' }"
     >
       <!-- 全选列 -->
       <el-table-column type="selection" width="55" />
 
       <!-- 一级类型：朝代 -->
       <template v-if="activeFirstType === 'dynasty' && !activeSubType">
-        <el-table-column prop="id" label="朝代ID" width="80" />
         <el-table-column prop="name" label="朝代名称" min-width="100" />
         <el-table-column prop="startYear" label="起始年份" width="120">
           <template #default="scope">
@@ -142,15 +146,13 @@
 
       <!-- 朝代子级：阶段 -->
       <template v-if="activeFirstType === 'dynasty' && activeSubType === 'dynastyStage'">
-        <el-table-column prop="id" label="阶段ID" width="80" />
-        <el-table-column prop="dynastyId" label="所属朝代ID" width="100" />
-        <el-table-column prop="stageName" label="阶段名称" min-width="100" />
-        <el-table-column prop="startYear" label="起始年份" width="120">
+        <el-table-column prop="stageName" label="阶段名称" />
+        <el-table-column prop="startYear" label="起始年份">
           <template #default="scope">
             {{ scope.row.startYear < 0 ? `公元前${-scope.row.startYear}年` : `公元${scope.row.startYear}年` }}
           </template>
         </el-table-column>
-        <el-table-column prop="endYear" label="结束年份" width="120">
+        <el-table-column prop="endYear" label="结束年份">
           <template #default="scope">
             {{ scope.row.endYear < 0 ? `公元前${-scope.row.endYear}年` : `公元${scope.row.endYear}年` }}
           </template>
@@ -165,16 +167,13 @@
 
       <!-- 朝代子级：事件 -->
       <template v-if="activeFirstType === 'dynasty' && activeSubType === 'historicalEvent'">
-        <el-table-column prop="id" label="事件ID" width="80" />
-        <el-table-column prop="dynastyId" label="所属朝代ID" width="100" />
-        <el-table-column prop="stageId" label="所属阶段ID" width="100" />
-        <el-table-column prop="eventName" label="事件名称" min-width="150" />
-        <el-table-column prop="eventYear" label="事件年份" width="120">
+        <el-table-column prop="eventName" label="事件名称" />
+        <el-table-column prop="eventYear" label="事件年份">
           <template #default="scope">
             {{ scope.row.eventYear < 0 ? `公元前${-scope.row.eventYear}年` : `公元${scope.row.eventYear}年` }}
           </template>
         </el-table-column>
-        <el-table-column prop="eventType" label="事件类型" width="100" />
+        <el-table-column prop="eventType" label="事件类型" />
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="scope">
             <el-button size="small" type="primary" @click="handleEdit(scope.row)">编辑</el-button>
@@ -185,13 +184,21 @@
 
       <!-- 朝代子级：人物 -->
       <template v-if="activeFirstType === 'dynasty' && activeSubType === 'historicalPerson'">
-        <el-table-column prop="id" label="人物ID" width="80" />
-        <el-table-column prop="dynastyId" label="所属朝代ID" width="100" />
-        <el-table-column prop="personName" label="人物姓名" min-width="100" />
-        <el-table-column prop="identityType" label="身份类型" width="100" />
-        <el-table-column prop="birthYear" label="出生年份" width="120">
+        <el-table-column prop="personName" label="人物姓名"/>
+        <el-table-column label="人物标签">
+         <template #default="scope">
+            <el-tag v-for="tag in scope.row.tags" :key="tag" style="margin-right: 4px">{{ tag }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="identityType" label="身份类型"/>
+        <el-table-column prop="birthYear" label="出生年份">
           <template #default="scope">
             {{ scope.row.birthYear ? (scope.row.birthYear < 0 ? `公元前${-scope.row.birthYear}年` : `公元${scope.row.birthYear}年`) : '未知' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="deathYear" label="死亡年份">
+          <template #default="scope">
+            {{ scope.row.deathYear ? (scope.row.deathYear < 0 ? `公元前${-scope.row.deathYear}年` : `公元${scope.row.deathYear}年`) : '未知' }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
@@ -223,7 +230,7 @@
     <!-- 新增/编辑弹窗 -->
     <el-dialog
       v-model="dialogVisible"
-      :title="getDialogTitle()"
+      :title="dialogType === 'add' ? '新增' : '编辑'"
       width="800px"
       destroy-on-close
     >
@@ -267,10 +274,24 @@
               :show-file-list="false"
               accept="image/*"
             >
-              <el-button icon="el-icon-picture">上传地图</el-button>
+              <el-button>上传地图</el-button>
             </el-upload>
-            <div v-if="formData.mapPath" style="margin-top: 10px">
-              <img :src="formData.mapPath" alt="朝代地图" style="width: 200px; height: auto" />
+            <!-- 地图预览区域 -->
+            <div class="upload-preview-container" style="margin-top: 10px">
+              <div v-if="previewFiles.mapPath" class="preview-title">预览：</div>
+              <img 
+                v-if="previewFiles.mapPath" 
+                :src="previewFiles.mapPath" 
+                alt="朝代地图预览" 
+                class="image-preview"
+              />
+              <img 
+                v-else-if="formData.mapPath" 
+                :src="formData.mapPath" 
+                alt="现有朝代地图" 
+                class="image-preview"
+              />
+              <div v-else class="no-preview-text">暂无地图</div>
             </div>
           </el-form-item>
           <el-form-item label="朝代简介" prop="dynastyDesc">
@@ -318,10 +339,61 @@
               :show-file-list="false"
               accept="image/*,audio/*,video/*"
             >
-              <el-button icon="el-icon-video-camera">上传多媒体</el-button>
+              <el-button>上传多媒体资源</el-button>
             </el-upload>
-            <div v-if="formData.multimediaPath" style="margin-top: 10px">
-              <span>{{ formData.multimediaPath }}</span>
+            <!-- 多媒体预览区域 -->
+            <div class="upload-preview-container" style="margin-top: 10px">
+              <div v-if="previewFiles.multimediaPath || formData.multimediaPath" class="preview-title">预览：</div>
+              
+              <!-- 图片预览 -->
+              <img 
+                v-if="previewFiles.multimediaPath && isImageFile(previewFiles.multimediaPath)" 
+                :src="previewFiles.multimediaPath" 
+                alt="多媒体预览" 
+                class="image-preview"
+              />
+              <img 
+                v-else-if="formData.multimediaPath && isImageFile(formData.multimediaPath)" 
+                :src="formData.multimediaPath" 
+                alt="现有多媒体" 
+                class="image-preview"
+              />
+              
+              <!-- 视频预览 -->
+              <video 
+                v-if="previewFiles.multimediaPath && isVideoFile(previewFiles.multimediaPath)" 
+                :src="previewFiles.multimediaPath" 
+                controls 
+                class="video-preview"
+              >您的浏览器不支持视频播放</video>
+              <video 
+                v-else-if="formData.multimediaPath && isVideoFile(formData.multimediaPath)" 
+                :src="formData.multimediaPath" 
+                controls 
+                class="video-preview"
+              >您的浏览器不支持视频播放</video>
+              
+              <!-- 音频预览 -->
+              <audio 
+                v-if="previewFiles.multimediaPath && isAudioFile(previewFiles.multimediaPath)" 
+                :src="previewFiles.multimediaPath" 
+                controls 
+                class="audio-preview"
+              >您的浏览器不支持音频播放</audio>
+              <audio 
+                v-else-if="formData.multimediaPath && isAudioFile(formData.multimediaPath)" 
+                :src="formData.multimediaPath" 
+                controls 
+                class="audio-preview"
+              >您的浏览器不支持音频播放</audio>
+              
+              <!-- 无资源提示 -->
+              <div v-else class="no-preview-text">暂无多媒体资源</div>
+              
+              <!-- 文件名显示 -->
+              <div v-if="previewFiles.multimediaPathName || (formData.multimediaPath && !isMediaFile(formData.multimediaPath))" class="file-name-text">
+                {{ previewFiles.multimediaPathName || formData.multimediaPath }}
+              </div>
             </div>
           </el-form-item>
         </template>
@@ -417,17 +489,31 @@
               :show-file-list="false"
               accept="image/*"
             >
-              <el-button icon="el-icon-picture">上传配图</el-button>
+              <el-button>上传配图</el-button>
             </el-upload>
-            <div v-if="formData.eventPicPath" style="margin-top: 10px">
-              <img :src="formData.eventPicPath" alt="事件配图" style="width: 200px; height: auto" />
+            <!-- 事件配图预览区域 -->
+            <div class="upload-preview-container" style="margin-top: 10px">
+              <div v-if="previewFiles.eventPicPath" class="preview-title">预览：</div>
+              <img 
+                v-if="previewFiles.eventPicPath" 
+                :src="previewFiles.eventPicPath" 
+                alt="事件配图预览" 
+                class="image-preview"
+              />
+              <img 
+                v-else-if="formData.eventPicPath" 
+                :src="formData.eventPicPath" 
+                alt="现有事件配图" 
+                class="image-preview"
+              />
+              <div v-else class="no-preview-text">暂无事件配图</div>
             </div>
           </el-form-item>
         </template>
 
         <!-- 朝代子级：人物表单 -->
         <template v-if="activeFirstType === 'dynasty' && activeSubType === 'historicalPerson'">
-          <el-form-item label="所属朝代ID" prop="dynastyId">
+          <el-form-item label="所属朝代" prop="dynastyId">
             <el-select v-model="formData.dynastyId" placeholder="请选择所属朝代" disabled>
               <el-option
                 v-for="item in dynastyList"
@@ -479,10 +565,24 @@
               :show-file-list="false"
               accept="image/*"
             >
-              <el-button icon="el-icon-user">上传头像</el-button>
+              <el-button>上传画像</el-button>
             </el-upload>
-            <div v-if="formData.avatarPath" style="margin-top: 10px">
-              <img :src="formData.avatarPath" alt="人物头像" style="width: 100px; height: auto" />
+            <!-- 人物头像预览区域 -->
+            <div class="upload-preview-container" style="margin-top: 10px">
+              <div v-if="previewFiles.avatarPath" class="preview-title">预览：</div>
+              <img 
+                v-if="previewFiles.avatarPath" 
+                :src="previewFiles.avatarPath" 
+                alt="人物头像预览" 
+                class="avatar-preview"
+              />
+              <img 
+                v-else-if="formData.avatarPath" 
+                :src="formData.avatarPath" 
+                alt="现有人物头像" 
+                class="avatar-preview"
+              />
+              <div v-else class="no-preview-text">暂无人物头像</div>
             </div>
           </el-form-item>
           <el-form-item label="人物生平" prop="personBio">
@@ -509,6 +609,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, ElEmpty } from 'element-plus'
+import { Search, Upload, Plus, Delete } from '@element-plus/icons-vue'
 
 // 数据类型映射
 const dataTypeMap = {
@@ -521,7 +622,7 @@ const dataTypeMap = {
 
 // 响应式数据
 const activeFirstType = ref('dynasty') // 一级类型：dynasty/allusion
-const activeSubType = ref('dynastyStage') // 朝代子级类型：dynastyStage/historicalEvent/historicalPerson
+const activeSubType = ref('') // 朝代子级类型：dynastyStage/historicalEvent/historicalPerson
 const selectedDynastyId = ref('') // 选中的朝代ID
 const dynastyList = ref([]) // 朝代列表（用于选择）
 const loading = ref(false) // 表格加载状态
@@ -529,6 +630,15 @@ const selectedIds = ref([]) // 选中的ID集合
 const dialogVisible = ref(false) // 弹窗显示状态
 const dialogType = ref('add') // 弹窗类型：add/edit
 const formRef = ref(null) // 表单引用
+
+// 预览文件存储
+const previewFiles = reactive({
+  mapPath: '',         // 朝代地图预览
+  multimediaPath: '',  // 多媒体资源预览
+  multimediaPathName: '', // 多媒体资源文件名
+  eventPicPath: '',    // 事件配图预览
+  avatarPath: ''       // 人物头像预览
+})
 
 // 计算属性：是否为子级类型
 const isSubType = computed(() => !!activeSubType.value)
@@ -572,6 +682,58 @@ const formRules = reactive({
   stageName: [{ required: true, message: '请输入阶段名称', trigger: 'blur' }]
 })
 
+// 判断文件类型 - 图片
+const isImageFile = (filePath) => {
+  if (!filePath) return false
+  const imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp']
+  if (filePath.startsWith('blob:')) {
+    // 处理blob URL，从previewFiles中获取原始文件类型
+    const fileType = Object.values(previewFiles).find(item => item === filePath)
+    if (fileType) {
+      const file = previewFiles[Object.keys(previewFiles).find(key => previewFiles[key] === filePath)]
+      return imageTypes.includes(file?.type)
+    }
+  }
+  // 处理远程URL
+  const ext = filePath.split('.').pop().toLowerCase()
+  return ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)
+}
+
+// 判断文件类型 - 视频
+const isVideoFile = (filePath) => {
+  if (!filePath) return false
+  const videoTypes = ['video/mp4', 'video/avi', 'video/mov', 'video/wmv', 'video/flv']
+  if (filePath.startsWith('blob:')) {
+    const fileType = Object.values(previewFiles).find(item => item === filePath)
+    if (fileType) {
+      const file = previewFiles[Object.keys(previewFiles).find(key => previewFiles[key] === filePath)]
+      return videoTypes.includes(file?.type)
+    }
+  }
+  const ext = filePath.split('.').pop().toLowerCase()
+  return ['mp4', 'avi', 'mov', 'wmv', 'flv'].includes(ext)
+}
+
+// 判断文件类型 - 音频
+const isAudioFile = (filePath) => {
+  if (!filePath) return false
+  const audioTypes = ['audio/mp3', 'audio/wav', 'audio/ogg', 'audio/m4a']
+  if (filePath.startsWith('blob:')) {
+    const fileType = Object.values(previewFiles).find(item => item === filePath)
+    if (fileType) {
+      const file = previewFiles[Object.keys(previewFiles).find(key => previewFiles[key] === filePath)]
+      return audioTypes.includes(file?.type)
+    }
+  }
+  const ext = filePath.split('.').pop().toLowerCase()
+  return ['mp3', 'wav', 'ogg', 'm4a'].includes(ext)
+}
+
+// 判断是否为媒体文件（图片/视频/音频）
+const isMediaFile = (filePath) => {
+  return isImageFile(filePath) || isVideoFile(filePath) || isAudioFile(filePath)
+}
+
 // 获取搜索框占位符
 const getSearchPlaceholder = () => {
   if (activeFirstType === 'dynasty' && !activeSubType) {
@@ -606,19 +768,6 @@ const getEmptyDescription = () => {
   return '暂无数据'
 }
 
-// 获取弹窗标题
-const getDialogTitle = () => {
-  let typeName = ''
-  if (activeFirstType === 'dynasty' && !activeSubType) {
-    typeName = '朝代'
-  } else if (activeFirstType === 'allusion') {
-    typeName = '典故'
-  } else if (activeSubType) {
-    typeName = dataTypeMap[activeSubType]
-  }
-  return `${dialogType.value === 'add' ? '新增' : '编辑'}${typeName}`
-}
-
 // 加载朝代列表（用于选择）
 const loadDynastyList = () => {
   // 模拟接口请求
@@ -639,7 +788,13 @@ const initMockData = () => {
       tableData.value = [
         { id: 1, name: '秦朝', startYear: -221, endYear: -207, capital: '咸阳', founder: '嬴政' },
         { id: 2, name: '汉朝', startYear: -202, endYear: 220, capital: '长安、洛阳', founder: '刘邦' },
-        { id: 3, name: '唐朝', startYear: 618, endYear: 907, capital: '长安', founder: '李渊' }
+        { id: 3, name: '唐朝', startYear: 618, endYear: 907, capital: '长安', founder: '李渊' },
+        { id: 3, name: '唐朝', startYear: 618, endYear: 907, capital: '长安', founder: '李渊' },
+        { id: 3, name: '唐朝', startYear: 618, endYear: 907, capital: '长安', founder: '李渊' },
+        { id: 3, name: '唐朝', startYear: 618, endYear: 907, capital: '长安', founder: '李渊' },
+        { id: 3, name: '唐朝', startYear: 618, endYear: 907, capital: '长安', founder: '李渊' },
+        { id: 3, name: '唐朝', startYear: 618, endYear: 907, capital: '长安', founder: '李渊' },
+        { id: 3, name: '唐朝', startYear: 618, endYear: 907, capital: '长安', founder: '李渊' },
       ]
     }
     // 一级类型：典故
@@ -724,10 +879,18 @@ const handleSelectionChange = (val) => {
   selectedIds.value = val.map(item => item.id)
 }
 
-// 文件上传（模拟）
+// 文件上传（带预览）
 const handleUpload = (field, file) => {
-  ElMessage.success(`${file.name} 上传成功`)
-  formData[field] = URL.createObjectURL(file.raw) // 模拟文件路径
+  // 存储预览URL和文件名
+  previewFiles[field] = URL.createObjectURL(file.raw)
+  if (field === 'multimediaPath') {
+    previewFiles.multimediaPathName = file.name
+  }
+  
+  // 更新表单数据
+  formData[field] = previewFiles[field]
+  
+  ElMessage.success(`${file.name} 上传预览成功`)
 }
 
 // Excel文件变更（批量导入）
@@ -761,6 +924,10 @@ const handleAdd = () => {
   Object.keys(formData).forEach(key => {
     delete formData[key]
   })
+  // 清空预览文件
+  Object.keys(previewFiles).forEach(key => {
+    previewFiles[key] = ''
+  })
   // 子级类型默认填充选中的朝代ID
   if (isSubType.value && selectedDynastyId.value) {
     formData.dynastyId = selectedDynastyId.value
@@ -773,6 +940,10 @@ const handleEdit = (row) => {
   dialogType.value = 'edit'
   // 重置表单
   formRef.value?.resetFields()
+  // 清空预览文件
+  Object.keys(previewFiles).forEach(key => {
+    previewFiles[key] = ''
+  })
   // 复制行数据到表单
   Object.assign(formData, { ...row })
   dialogVisible.value = true
@@ -831,6 +1002,10 @@ const handleSubmit = () => {
       }
       pagination.total = tableData.value.length
       dialogVisible.value = false
+      // 清空预览文件
+      Object.keys(previewFiles).forEach(key => {
+        previewFiles[key] = ''
+      })
       ElMessage.success(`${dialogType.value === 'add' ? '新增' : '编辑'}成功`)
     }, 500)
   })
@@ -847,7 +1022,6 @@ onMounted(() => {
 .data-management-container {
   padding: 20px;
   background: #fff;
-  min-height: calc(100vh - 60px);
 }
 
 .header-actions {
@@ -863,5 +1037,54 @@ onMounted(() => {
 .empty-tip {
   margin-top: 50px;
   text-align: center;
+}
+
+/* 上传预览样式 */
+.upload-preview-container {
+  margin-top: 10px;
+}
+
+.preview-title {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.image-preview {
+  max-width: 200px;
+  max-height: 200px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+}
+
+.avatar-preview {
+  max-width: 100px;
+  max-height: 100px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+}
+
+.video-preview {
+  max-width: 300px;
+  max-height: 200px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+}
+
+.audio-preview {
+  margin-top: 8px;
+}
+
+.no-preview-text {
+  color: #999;
+  font-size: 14px;
+  padding: 8px 0;
+}
+
+.file-name-text {
+  color: #666;
+  font-size: 14px;
+  margin-top: 8px;
+  word-break: break-all;
 }
 </style>
