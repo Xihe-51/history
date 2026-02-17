@@ -35,13 +35,12 @@
             <div class="user-center">
                 <el-dropdown v-if="isLogin">
                     <span class="el-dropdown-link">
-                        <el-avatar :size="50" :src="avatar_url" />
+                        <el-avatar :size="50" :src="BASE_URL+avatar_url || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png'" />
                     </span>
                     <template #dropdown>
                         <el-dropdown-menu>
-                            <el-dropdown-item>个人中心</el-dropdown-item>
+                            <el-dropdown-item @click="goToProfile">个人中心</el-dropdown-item>
                             <el-dropdown-item>我的笔记</el-dropdown-item>
-                            <el-dropdown-item>答题记录</el-dropdown-item>
                             <el-dropdown-item @click="logout">退出登录</el-dropdown-item>
                         </el-dropdown-menu>
                     </template>
@@ -57,21 +56,39 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router'
+import { getUserById } from '@/api/user';
+import { BASE_URL } from '@/utils/request';
 
-const isLogin = ref(false)
+const isLogin = ref(false);
+const userId = ref(0);
+const avatar_url = ref('');
+const router = useRouter();
 
 onMounted(() => {
     const token = localStorage.getItem("token");
     if (token) {
         isLogin.value = true;
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        userId.value = payload.userId;
+        const res = getUserById(userId.value);
+        res.then((response) => {
+            if (response.data.code === 200) {
+                const user = response.data.data;
+                avatar_url.value = user.avatarPath;
+            }
+        }).catch((error) => {
+            console.error("获取用户信息失败:", error);
+        });
     }
 })
-const avatar_url = "https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png"
-const router = useRouter();
+
 
 const logout = () => {
     localStorage.removeItem("token");
     router.push('/login')
+}
+const goToProfile = () => {
+    router.push('/profile')
 }
 </script>
 

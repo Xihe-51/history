@@ -35,6 +35,9 @@ public class UserController {
             @RequestParam(required = false) Byte status,
             @RequestParam(required = false) String username
     ) { return userService.queryUserBatchByPage(pageNum, pageSize, role, status, username); }
+    // 根据id查询用户信息
+    @GetMapping("/user/{id}")
+    public ResultVO<User> getUserDetail(@PathVariable Long id) { return userService.getUserDetail(id); }
     // 根据id修改用户信息（选择性更新，只更新非null字段）
     @PutMapping("/update")
     public ResultVO<User> updateUserById(@RequestBody User user){ return userService.updateUserById(user); }

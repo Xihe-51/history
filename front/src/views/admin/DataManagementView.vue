@@ -23,7 +23,7 @@
                 </el-table-column>
                 <el-table-column label="操作">
                     <template #default="{ row }">
-                        <el-button type="success" size="small" @click="recover(row)" class="operate-btn recover-btn">
+                        <el-button type="success" size="small" @click="recover(row)" class="operate-btn recover-btn" :loading="recovering">
                             <el-icon>
                                 <RefreshLeft />
                             </el-icon>
@@ -51,7 +51,8 @@
 import { ref, reactive, onMounted, computed } from 'vue';
 import { getFileList, recoverData, backupData, deleteData } from '@/api/data';
 import { ElMessage, ElEmpty } from 'element-plus';
-import { el } from 'element-plus/es/locales.mjs';
+
+const recovering = ref(false);
 
 const tableData = ref([]);
 
@@ -129,6 +130,7 @@ const backup = async () => {
 
 const recover = async (row: any) => {
     try {
+        recovering.value = true;
         const res = await recoverData(row.fileName);
         if (res.data.code === 200) {
             ElMessage.success('恢复成功');
@@ -138,6 +140,8 @@ const recover = async (row: any) => {
     } catch (error) {
         ElMessage.error('网络异常，恢复失败');
         console.error('恢复失败:', error);
+    } finally {
+        recovering.value = false;
     }
 }
 

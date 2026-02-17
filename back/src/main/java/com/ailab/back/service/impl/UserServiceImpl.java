@@ -153,6 +153,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
+    public ResultVO<User> getUserDetail(Long id) {
+        User user = userMapper.selectById(id);
+        if(user!=null){
+            return ResultVO.<User>success().setData(user);
+        }
+        else {
+            return ResultVO.error("未找到用户");
+        }
+    }
+
+    @Override
     public ResultVO<User> updateUserById(User user) {
         if (StringUtils.hasText(user.getPasswordHash())){
             String encodedPassword = passwordEncoder.encode(user.getPasswordHash());

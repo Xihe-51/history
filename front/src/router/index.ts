@@ -19,6 +19,12 @@ const router = createRouter({
 			component: () => import("@/views/TimeLineView.vue"),
 		},
 		{
+			path: '/profile',
+			name: 'profile',
+			component: () => import("@/views/ProfileView.vue"),
+			meta: { requiresAuth: true }, // 需要认证才能访问
+		},
+		{
 			path: '/admin',
 			name: 'admin',
 			redirect: '/admin/user-management', // 默认子路由

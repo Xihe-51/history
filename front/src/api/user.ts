@@ -61,3 +61,12 @@ export const updateUserById = (user: any) => {
 export const deleteUserById = (id: number | string) => {
     return request.delete(`/user/delete/${id}`);
 };
+
+/**
+ * 根据ID查询用户
+    * @param id - 用户ID
+    * @return 用户信息
+ */
+export const getUserById = (id: number | string) => {
+    return request.get(`/user/user/${id}`);
+}

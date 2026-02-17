@@ -36,6 +36,10 @@ public interface UserService extends IService<User> {
                                     Byte status,
                                     String username);
     /**
+     * 根据查询用户信息
+     * */
+    ResultVO<User> getUserDetail(Long id);
+    /**
      * 根据id修改用户信息
      * */
     ResultVO<User> updateUserById(User user);
