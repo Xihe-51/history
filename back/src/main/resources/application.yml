@@ -1,0 +1,157 @@
+# ============================================
+# 服务器配置
+# ============================================
+
+# server 配置节：配置内嵌的 Web 服务器
+server:
+  # 端口配置：指定应用程序监听的端口号
+  port: 8080
+  # servlet 相关配置
+  servlet:
+    # 上下文路径：所有请求的前缀，访问时需要加上 /api
+    # 例如：http://localhost:8080/api/xxx
+    context-path: /api
+
+# ============================================
+# Spring 框架配置
+# ============================================
+
+# spring 配置节：Spring Boot 核心配置
+spring:
+  # ============================================
+  # 数据源配置（数据库连接配置）
+  # ============================================
+  datasource:
+    # 数据库连接 URL：
+    # jdbc:mysql:// - JDBC 连接 MySQL 数据库的协议
+    # localhost:3306 - 数据库服务器地址和端口
+    # history - 数据库名称
+    # useSSL=false - 禁用 SSL 连接（开发环境常用）
+    # serverTimezone=Asia/Shanghai - 设置服务器时区为上海时间
+    # allowPublicKeyRetrieval=true - 允许公钥检索（解决 MySQL 8.0 认证问题）
+    # characterEncoding=utf-8 - 设置字符编码
+    url: jdbc:mysql://localhost:3306/history?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=utf-8
+
+    # 数据库用户名
+    username: root
+
+    # 数据库密码（注意：YAML 中纯数字需要引号，否则会被解析为数字类型）
+    password: "1q2w3e4r"
+
+    # JDBC 驱动类名：
+    # MySQL Connector/J 8.0+ 的驱动类
+    # 对应 Maven 依赖：mysql-connector-java 或 mysql-connector-j
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  servlet:
+    multipart:
+      # 单个文件最大大小（这里设置为100MB，可根据需求调整）
+      max-file-size: 100MB
+      # 单次请求总文件大小（这里设置为200MB）
+      max-request-size: 200MB
+      # 是否启用文件上传支持（默认true）
+      enabled: true
+
+  # ============================================
+  # JPA（Java Persistence API）配置
+  # ============================================
+  jpa:
+    # Hibernate 相关配置（Hibernate 是 JPA 的一个实现）
+    hibernate:
+      # DDL 自动更新策略：
+      # update - 启动时检查实体类与数据库表结构，自动更新表结构
+      # 其他可选值：
+      #   create - 每次启动都删除表重新创建（开发环境）
+      #   create-drop - 启动创建，关闭删除（测试环境）
+      #   validate - 只验证不修改（生产环境）
+      #   none - 不执行任何操作
+      ddl-auto: update
+
+    # 是否在控制台显示执行的 SQL 语句
+    # true - 显示 SQL，便于调试
+    # false - 不显示 SQL，生产环境建议关闭
+    show-sql: true
+
+    # JPA 其他属性配置
+    properties:
+      hibernate:
+        # 数据库方言：告诉 Hibernate 使用哪种 SQL 方言
+        # MySQL8Dialect - 针对 MySQL 8.0+ 的优化方言
+        dialect: org.hibernate.dialect.MySQL8Dialect
+
+        # 是否格式化 SQL 语句
+        # true - SQL 会格式化输出，便于阅读
+        # false - SQL 单行输出
+        format_sql: true
+
+# ============================================
+# 图片文件配置
+# ============================================
+image:
+  # 图片存储的物理路径
+  upload:
+    path: file:D:\history-master\front\src\assets
+  # 前端访问的URL前缀
+  access:
+    prefix: /images/
+
+# ============================================
+# 数据库备份配置
+# ============================================
+db:
+  backup:
+    # SQL备份文件存储根路径（相对resources）
+    save-path: "db/"
+    # 备份文件时间格式
+    date-format: "yyyy-MM-dd HH-mm-ss"
+
+# ============================================
+# API配置
+# ============================================
+api:
+  key: "sk-mwsrkbluwpsbvbdbojawgjunxrfgmimnnsoeqtrzmlglktqh"
+
+# ============================================
+# 硅基流动 AI 配置（新增）
+# ============================================
+siliconflow:
+  # API密钥：用于调用硅基流动AI服务
+  # 获取方式：登录 https://siliconflow.cn 控制台 -> API Keys
+  api-key: "sk-mwsrkbluwpsbvbdbojawgjunxrfgmimnnsoeqtrzmlglktqh"
+  # API接口地址：硅基流动聊天接口
+  api-url: https://api.siliconflow.cn/v1/chat/completions
+  # 默认使用的AI模型
+  # Qwen/Qwen2.5-7B-Instruct - 通义千问2.5 70亿参数指令模型
+  # 其他可选模型：
+  #   Qwen/Qwen2.5-14B-Instruct - 140亿参数
+  #   Qwen/Qwen2.5-32B-Instruct - 320亿参数
+  #   deepseek-ai/DeepSeek-V2.5 - 深度求索模型
+  default-model: Qwen/Qwen2.5-7B-Instruct
+  # 最大生成Token数：控制回答的长度
+  # 500 约等于 500个中文词
+  max-tokens: 500
+  # 温度参数：控制回答的随机性
+  # 0.7 - 适中，既保证准确性又有一定创造性
+  # 范围 0-1，值越低越保守，值越高越有创造性
+  temperature: 0.7
+  # 请求超时时间（秒）
+  timeout: 30
+
+# ============================================
+# 日志配置
+# ============================================
+
+# logging 配置节：日志输出配置
+logging:
+  # 日志级别配置
+  level:
+    # 指定包下的日志级别：
+    # com.example.demo - 项目自定义包，DEBUG 级别会输出详细信息
+    # 级别从低到高：TRACE < DEBUG < INFO < WARN < ERROR < FATAL
+    com.example.demo: DEBUG
+    
+    # Hibernate SQL 日志级别：
+    # 设置为 DEBUG 可以在控制台看到详细的 SQL 语句
+    org.hibernate.SQL: DEBUG
+    # 如果还需要看到 SQL 参数值，可以添加：
+    # org.hibernate.type.descriptor.sql: TRACE
