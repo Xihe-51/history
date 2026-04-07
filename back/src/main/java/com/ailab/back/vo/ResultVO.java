@@ -35,7 +35,10 @@ public class ResultVO<T> {
 
     /**
      * 设置响应数据（链式调用支持）
+<<<<<<< HEAD
      *
+=======
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
      * @param data 要设置的业务数据
      * @return 当前ResultVO对象（支持链式调用）
      */
@@ -104,6 +107,7 @@ public class ResultVO<T> {
     public static <T> ResultVO<T> error(String msg) {
         return new ResultVO<T>(ERROR_CODE, msg, null);
     }
+<<<<<<< HEAD
 
 
     /**
@@ -137,4 +141,6 @@ public class ResultVO<T> {
     public static <T> ResultVO<T> error(String msg, T data) {
         return new ResultVO<T>(ERROR_CODE, msg, data);
     }
+=======
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 }

@@ -1,6 +1,7 @@
 import axios from "axios"
 
 const BASE_URL = "http://localhost:8080/api";
+<<<<<<< HEAD
 
 const request = axios.create({
 	baseURL: BASE_URL,
@@ -45,3 +46,11 @@ request.interceptors.response.use(
 
 export { BASE_URL }
 export default request
+=======
+export { BASE_URL }
+const request = axios.create({
+	baseURL: BASE_URL
+})
+
+export default request;
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5

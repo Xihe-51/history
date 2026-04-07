@@ -30,6 +30,7 @@ CREATE TABLE `dynasty_stage` (
                                  INDEX `idx_dynasty_stage_dynasty_id` (`dynasty_id`) COMMENT '按所属朝代ID索引',
                                  FOREIGN KEY (`dynasty_id`) REFERENCES `dynasty`(`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='存储长跨度朝代细分阶段表';
+<<<<<<< HEAD
 -- dynasty表测试信息
 INSERT INTO dynasty (name, start_year, end_year, capital, founder, map_path, dynasty_desc)
 VALUES
@@ -75,6 +76,8 @@ VALUES
 
     (10, '北宋', 960, 1127, '宋朝前期'),
     (10, '南宋', 1128, 1279, '宋朝后期');
+=======
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 
 -- 3. 历史事件表
 CREATE TABLE `historical_event` (

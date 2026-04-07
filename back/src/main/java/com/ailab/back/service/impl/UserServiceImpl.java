@@ -1,5 +1,9 @@
 package com.ailab.back.service.impl;
+<<<<<<< HEAD
 import com.ailab.back.Entity.User;
+=======
+import com.ailab.back.bean.User;
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 import com.ailab.back.mapper.UserMapper;
 import com.ailab.back.service.UserService;
 import com.ailab.back.utils.JwtUtil;

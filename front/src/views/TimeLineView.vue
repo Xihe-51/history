@@ -1,6 +1,7 @@
 <template>
 	<div class="history-app">
 		<!-- 顶部导航栏 -->
+<<<<<<< HEAD
 		<top-component 
 			ref="topNavRef" 
 			class="top-nav"
@@ -492,11 +493,19 @@
 				</div>
 			</div>
 		</transition>
+=======
+		<top-component />
+		<!-- 主内容区域 -->
+		<main class="app-main">
+			
+		</main>
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 	</div>
 </template>
 
 <script setup>
 import { ElMessage } from 'element-plus';
+<<<<<<< HEAD
 import { onMounted, ref, watch, nextTick, computed } from 'vue'; 
 import { useRouter } from 'vue-router';  
 import topComponent from '@/components/topComponent.vue';
@@ -1542,10 +1551,15 @@ onMounted(async () => {
     };
     document.head.appendChild(script);
 });
+=======
+import { onMounted, ref } from 'vue'
+import topComponent from '@/components/topComponent.vue';
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 </script>
 
 <style scoped>
 .history-app {
+<<<<<<< HEAD
 	min-height: 100vh; 
 	width: 100%;
 	display: flex;
@@ -1553,10 +1567,19 @@ onMounted(async () => {
 	font-family: "Microsoft YaHei", "SimHei", "PingFang SC", sans-serif;
 	color: #333;
 	background-color: #1a1a1a; 
+=======
+	min-height: 100%;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	font-family: "Microsoft YaHei", "SimHei", sans-serif;
+	color: #333;
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 }
 
 /* 主内容区域 */
 .app-main {
+<<<<<<< HEAD
 	padding: 0;
 	margin: 0;
 	flex: 1;
@@ -3110,4 +3133,11 @@ onMounted(async () => {
 	}
 }
 
+=======
+	flex: 1;
+	max-width: 1440px;
+	margin: 0 auto;
+	padding: 20px;
+}
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 </style>

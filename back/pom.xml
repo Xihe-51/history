@@ -23,6 +23,7 @@
     </properties>
 
     <dependencies>
+<<<<<<< HEAD
         <!-- Apache POI (Excel处理) -->
         <dependency>
             <groupId>org.apache.poi</groupId>
@@ -30,6 +31,8 @@
             <version>4.1.2</version>
         </dependency>
 
+=======
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
         <!-- Spring Boot Web Starter -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -42,14 +45,20 @@
             <artifactId>mybatis-spring-boot-starter</artifactId>
             <version>3.0.3</version>
         </dependency>
+<<<<<<< HEAD
 
         <!-- Commons IO -->
+=======
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.11.0</version>
         </dependency>
+<<<<<<< HEAD
 
+=======
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
         <!-- MySQL Driver -->
         <dependency>
             <groupId>com.mysql</groupId>
@@ -63,28 +72,42 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+<<<<<<< HEAD
 
         <!-- MyBatis Plus -->
+=======
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-boot-starter</artifactId>
             <version>3.5.3.1</version>
         </dependency>
+<<<<<<< HEAD
 
+=======
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
         <!-- Spring Boot Test Starter -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+<<<<<<< HEAD
 
         <!-- Spring Security -->
+=======
+        <!-- Spring Security 核心依赖 -->
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
+<<<<<<< HEAD
 
         <!-- JWT -->
+=======
+        <!-- JWT令牌依赖 -->
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -102,12 +125,16 @@
             <version>0.11.5</version>
             <scope>runtime</scope>
         </dependency>
+<<<<<<< HEAD
 
         <!-- Spring Data JPA -->
+=======
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
+<<<<<<< HEAD
 
         <!-- ==================== 新增依赖（去除版本号，由 Spring Boot 管理） ==================== -->
 
@@ -146,6 +173,8 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
+=======
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
     </dependencies>
 
     <build>

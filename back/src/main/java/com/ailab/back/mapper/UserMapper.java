@@ -1,7 +1,13 @@
 package com.ailab.back.mapper;
 
+<<<<<<< HEAD
 import com.ailab.back.Entity.User;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+=======
+import com.ailab.back.bean.User;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Mapper;
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 import org.apache.ibatis.annotations.Param;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.util.List;

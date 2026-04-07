@@ -1,6 +1,10 @@
 package com.ailab.back.controller;
 
+<<<<<<< HEAD
 import com.ailab.back.Entity.User;
+=======
+import com.ailab.back.bean.User;
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 import com.ailab.back.service.UserService;
 import com.ailab.back.vo.ResultVO;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;

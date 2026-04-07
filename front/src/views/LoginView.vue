@@ -21,6 +21,7 @@
 
         <!-- 密码 -->
         <el-form-item prop="password">
+<<<<<<< HEAD
           <el-input 
             v-model="form.password" 
             placeholder="请输入密码" 
@@ -29,6 +30,9 @@
             clearable 
             show-password 
           />
+=======
+          <el-input v-model="form.password" placeholder="请输入密码" @keyup.enter.native="handleSubmit" prefix-icon="Lock" clearable show-password />
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
         </el-form-item>
 
         <!-- 确认密码 (仅注册显示) -->
@@ -64,11 +68,16 @@ import type { FormInstance, FormRules } from 'element-plus';
 import { register, login } from '@/api/user';
 import { useRouter } from 'vue-router';
 
+<<<<<<< HEAD
 const router = useRouter();
+=======
+const router = useRouter()
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 
 onMounted(() => {
   let token = localStorage.getItem("token");
   if (token) {
+<<<<<<< HEAD
     window.location.href = '/timeline';
   }
 });
@@ -77,6 +86,20 @@ const authFormRef = ref<FormInstance>();
 const submitLoading = ref(false);
 const isLogin = ref(true);
 
+=======
+    router.push('/timeline')
+  }
+})
+
+// 表单引用
+const authFormRef = ref<FormInstance>();
+// 提交加载状态
+const submitLoading = ref(false);
+// 切换登录/注册
+const isLogin = ref(true);
+
+// 定义表单数据接口
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 interface AuthForm {
   username: string;
   email: string;
@@ -84,6 +107,10 @@ interface AuthForm {
   confirmPassword: string;
 }
 
+<<<<<<< HEAD
+=======
+// 表单数据
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 const form = reactive<AuthForm>({
   username: '',
   email: '',
@@ -91,6 +118,10 @@ const form = reactive<AuthForm>({
   confirmPassword: ''
 });
 
+<<<<<<< HEAD
+=======
+// 表单验证规则
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 const rules = reactive<FormRules>({
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
@@ -119,24 +150,44 @@ const rules = reactive<FormRules>({
   ]
 });
 
+<<<<<<< HEAD
 const toggleAuthType = () => {
   isLogin.value = !isLogin.value;
   authFormRef.value?.resetFields();
 };
 
+=======
+// 切换登录/注册类型
+const toggleAuthType = () => {
+  isLogin.value = !isLogin.value;
+  // 切换时重置表单
+  authFormRef.value?.resetFields();
+};
+
+// 提交表单
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 const handleSubmit = async () => {
   if (!authFormRef.value) return;
 
   try {
+<<<<<<< HEAD
+=======
+    // 表单验证
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
     await authFormRef.value.validate();
     submitLoading.value = true;
 
     let response;
     if (isLogin.value) {
+<<<<<<< HEAD
+=======
+      // 登录逻辑
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
       response = await login({
         username: form.username,
         passwordHash: form.password
       });
+<<<<<<< HEAD
       console.log('登录接口返回数据：', response);
 
       if (response.data.code === 200) {
@@ -161,11 +212,30 @@ const handleSubmit = async () => {
         ElMessage.error(response.data.msg || '登录失败，请检查用户名或密码');
       }
     } else {
+=======
+      console.log('登录接口返回数据：', response.data);
+      if (response.data.code === 200) {
+        localStorage.setItem("token", response.data.data.token)
+        if (response.data.data.role === "user") {
+          router.push('/timeline')
+        }
+        else {
+          router.push('/admin')
+        }
+        ElMessage.success('登录成功');
+      }
+      else {
+        ElMessage.error("登录失败，" + response.data.msg)
+      }
+    } else {
+      // 注册逻辑
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
       response = await register({
         username: form.username,
         email: form.email,
         passwordHash: form.password
       });
+<<<<<<< HEAD
       console.log('注册接口返回数据：', response);
       
       if (response.data.code === 200) {
@@ -186,6 +256,15 @@ const handleSubmit = async () => {
     } else {
       ElMessage.error(error.message || '操作失败，请稍后重试');
     }
+=======
+      console.log('注册接口返回数据：', response.data);
+      ElMessage.success('注册成功');
+      toggleAuthType();
+    }
+  } catch (error) {
+    console.error('请求失败：', error);
+    ElMessage.error('操作失败，请稍后重试');
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
   } finally {
     submitLoading.value = false;
   }
@@ -217,6 +296,7 @@ const handleSubmit = async () => {
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 10;
+<<<<<<< HEAD
   animation: fadeIn 0.5s ease;
 }
 
@@ -229,6 +309,8 @@ const handleSubmit = async () => {
     opacity: 1;
     transform: translate(-50%, -50%);
   }
+=======
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 }
 
 /* Logo区域 */
@@ -238,11 +320,18 @@ const handleSubmit = async () => {
 }
 
 .title {
+<<<<<<< HEAD
   font-size: 28px;
   color: #3b3a1e;
   font-weight: 1000;
   margin: 0;
   letter-spacing: 2px;
+=======
+  font-size: 24px;
+  color: #3b3a1e;
+  font-weight: 1000;
+  margin: 0;
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 }
 
 /* 表单样式 */
@@ -250,6 +339,7 @@ const handleSubmit = async () => {
   width: 100%;
 }
 
+<<<<<<< HEAD
 :deep(.el-form-item) {
   margin-bottom: 22px;
 }
@@ -267,20 +357,32 @@ const handleSubmit = async () => {
 
 :deep(.el-input__wrapper.is-focus) {
   box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+=======
+.el-form-item {
+  margin-bottom: 20px;
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 }
 
 /* 按钮样式 */
 .btn-item {
+<<<<<<< HEAD
   margin-bottom: 20px;
   margin-top: 30px;
+=======
+  margin-bottom: 15px;
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 }
 
 .submit-btn {
   width: 100%;
   height: 48px;
   font-size: 16px;
+<<<<<<< HEAD
   font-weight: 600;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+  background: linear-gradient(90deg, #4361ee, #3a0ca3);
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
   border: none;
   border-radius: 8px;
   transition: all 0.3s ease;
@@ -288,11 +390,15 @@ const handleSubmit = async () => {
 
 .submit-btn:hover {
   transform: translateY(-2px);
+<<<<<<< HEAD
   box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
 }
 
 .submit-btn:active {
   transform: translateY(0);
+=======
+  box-shadow: 0 8px 16px rgba(67, 97, 238, 0.3);
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 }
 
 /* 切换按钮 */
@@ -303,6 +409,7 @@ const handleSubmit = async () => {
 }
 
 .link-btn {
+<<<<<<< HEAD
   color: #667eea;
   font-weight: 600;
   padding: 0;
@@ -311,6 +418,15 @@ const handleSubmit = async () => {
 
 .link-btn:hover {
   color: #764ba2;
+=======
+  color: #4361ee;
+  font-weight: 500;
+  padding: 0;
+}
+
+.link-btn:hover {
+  color: #3a0ca3;
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 }
 
 /* 响应式适配 */
@@ -319,9 +435,12 @@ const handleSubmit = async () => {
     width: 90%;
     padding: 30px 20px;
   }
+<<<<<<< HEAD
   
   .title {
     font-size: 24px;
   }
+=======
+>>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 }
 </style>
