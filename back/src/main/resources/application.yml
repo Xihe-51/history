@@ -19,13 +19,25 @@ server:
 # spring 配置节：Spring Boot 核心配置
 spring:
   # ============================================
+  # 静态资源配置（新增）
+  # ============================================
+  web:
+    resources:
+      # 静态资源位置
+      static-locations:
+        - classpath:/static/
+        - file:./src/main/resources/static/
+        - file:D:/history-master/back/src/main/resources/static/images/
+      # 允许映射
+      add-mappings: true
+
+  # ============================================
   # 数据源配置（数据库连接配置）
   # ============================================
   datasource:
     # 数据库连接 URL：
     # jdbc:mysql:// - JDBC 连接 MySQL 数据库的协议
     # localhost:3306 - 数据库服务器地址和端口
-<<<<<<< HEAD
     # history - 数据库名称
     # useSSL=false - 禁用 SSL 连接（开发环境常用）
     # serverTimezone=Asia/Shanghai - 设置服务器时区为上海时间
@@ -39,27 +51,11 @@ spring:
     # 数据库密码（注意：YAML 中纯数字需要引号，否则会被解析为数字类型）
     password: "1q2w3e4r"
 
-=======
-    # study_db - 数据库名称
-    # useSSL=false - 禁用 SSL 连接（开发环境常用）
-    # serverTimezone=UTC - 设置服务器时区为协调世界时
-    url: jdbc:mysql://localhost:3306/history?useSSL=false&serverTimezone=UTC
-    
-    # 数据库用户名
-    username: root
-    
-    # 数据库密码（注意：YAML 中纯数字需要引号，否则会被解析为数字类型）
-    password: "048075"
-    
->>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
     # JDBC 驱动类名：
     # MySQL Connector/J 8.0+ 的驱动类
     # 对应 Maven 依赖：mysql-connector-java 或 mysql-connector-j
     driver-class-name: com.mysql.cj.jdbc.Driver
-<<<<<<< HEAD
 
-=======
->>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
   servlet:
     multipart:
       # 单个文件最大大小（这里设置为100MB，可根据需求调整）
@@ -83,50 +79,31 @@ spring:
       #   validate - 只验证不修改（生产环境）
       #   none - 不执行任何操作
       ddl-auto: update
-<<<<<<< HEAD
 
-=======
-    
->>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
     # 是否在控制台显示执行的 SQL 语句
     # true - 显示 SQL，便于调试
     # false - 不显示 SQL，生产环境建议关闭
     show-sql: true
-<<<<<<< HEAD
 
-=======
-    
->>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
     # JPA 其他属性配置
     properties:
       hibernate:
         # 数据库方言：告诉 Hibernate 使用哪种 SQL 方言
         # MySQL8Dialect - 针对 MySQL 8.0+ 的优化方言
         dialect: org.hibernate.dialect.MySQL8Dialect
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
         # 是否格式化 SQL 语句
         # true - SQL 会格式化输出，便于阅读
         # false - SQL 单行输出
         format_sql: true
-<<<<<<< HEAD
 
-=======
->>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 # ============================================
 # 图片文件配置
 # ============================================
 image:
   # 图片存储的物理路径
   upload:
-<<<<<<< HEAD
     path: file:D:\history-master\front\src\assets
-=======
-    path: file:E:/history/back/src/main/resources/static/images/
->>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
   # 前端访问的URL前缀
   access:
     prefix: /images/
@@ -148,7 +125,6 @@ api:
   key: "sk-mwsrkbluwpsbvbdbojawgjunxrfgmimnnsoeqtrzmlglktqh"
 
 # ============================================
-<<<<<<< HEAD
 # 硅基流动 AI 配置（新增）
 # ============================================
 siliconflow:
@@ -175,8 +151,6 @@ siliconflow:
   timeout: 30
 
 # ============================================
-=======
->>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 # 日志配置
 # ============================================
 
@@ -188,7 +162,7 @@ logging:
     # com.example.demo - 项目自定义包，DEBUG 级别会输出详细信息
     # 级别从低到高：TRACE < DEBUG < INFO < WARN < ERROR < FATAL
     com.example.demo: DEBUG
-    
+
     # Hibernate SQL 日志级别：
     # 设置为 DEBUG 可以在控制台看到详细的 SQL 语句
     org.hibernate.SQL: DEBUG

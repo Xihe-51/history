@@ -18,7 +18,7 @@
               <!-- 左侧隐形占位盒子 -->
               <div class="spacer-box left-spacer"></div>
               
-              <!-- 实际事件卡片 - 按时间从早到晚排序 -->
+              <!-- 实际事件卡片 -->
               <div 
                 v-for="(event, idx) in sortedEvents" 
                 :key="event.id"
@@ -29,6 +29,12 @@
               >
                 <div class="card-inner">
                   <div class="card-image-wrapper">
+                    <img 
+                      :src="getCardImageUrl(event.eventPicPath)" 
+                      class="card-event-image"
+                      @error="handleCardImageError"
+                      alt="事件配图"
+                    >
                     <div class="event-badge">{{ getEventTypeIcon(event.eventType) }}</div>
                   </div>
                   <div class="card-content">
@@ -107,17 +113,14 @@
       <div class="content-wrapper">
         <!-- 左侧主要内容 -->
         <div class="main-content">
-          <!-- 事件配图轮播（暂用占位图） -->
-          <div class="image-carousel">
-            <el-carousel :interval="5000" arrow="always" height="400px">
-              <el-carousel-item>
-                <div class="image-placeholder">
-                  <div class="placeholder-icon">🏛️</div>
-                  <div class="placeholder-text">{{ currentEvent.eventName }}</div>
-                </div>
-                <div class="image-caption">{{ currentEvent.eventName }} 历史场景</div>
-              </el-carousel-item>
-            </el-carousel>
+          <div class="image-container" v-if="currentEvent.eventName">
+            <img 
+              :src="'http://localhost:8080/api' + currentEvent.eventPicPath" 
+              class="event-image-simple"
+              @error="handleImageError"
+              alt="事件配图"
+            >
+            <div class="image-caption">{{ currentEvent.eventName }} 历史场景</div>
           </div>
 
           <!-- 富文本内容区域 -->
@@ -293,6 +296,28 @@ import request from '@/utils/request';
 const router = useRouter();
 const route = useRoute();
 
+// 默认占位图片
+const defaultImage = 'https://picsum.photos/id/104/800/400';
+
+// 获取卡片图片完整URL
+function getCardImageUrl(picPath) {
+  if (picPath) {
+    return `http://localhost:8080/api${picPath}`;
+  }
+  return ''; // 没有图片时返回空，让图片不显示
+}
+
+// 卡片图片加载失败处理
+function handleCardImageError(e) {
+  e.target.style.display = 'none'; // 隐藏失败的图片，显示图标
+}
+
+// 图片加载失败时使用默认图片
+function handleImageError(e) {
+  console.log('图片加载失败，尝试使用默认图片');
+  e.target.src = defaultImage;
+}
+
 // 朝代信息映射表
 const dynastyMap = {
   1: { name: "夏朝", period: "约前2070年—约前1600年", capital: "阳城", founder: "禹" },
@@ -311,47 +336,37 @@ const dynastyMap = {
   14: { name: "清朝", period: "1636年—1912年", capital: "北京", founder: "皇太极" }
 };
 
-// 根据 dynastyId 获取朝代名称
 function getDynastyName(dynastyId) {
   return dynastyMap[dynastyId]?.name || "未知朝代";
 }
 
-// 获取朝代时期
 function getDynastyPeriod(dynastyName) {
   const dynasty = Object.values(dynastyMap).find(d => d.name === dynastyName);
   return dynasty?.period || "未知时期";
 }
 
-// 获取朝代都城
 function getDynastyCapital(dynastyName) {
   const dynasty = Object.values(dynastyMap).find(d => d.name === dynastyName);
   return dynasty?.capital || "未知";
 }
 
-// 获取朝代创始人
 function getDynastyFounder(dynastyName) {
   const dynasty = Object.values(dynastyMap).find(d => d.name === dynastyName);
   return dynasty?.founder || "未知";
 }
 
-// 从后端获取的事件数据
 const allEvents = ref([]);
 const isLoading = ref(false);
-
-// 当前事件详情
 const currentEvent = ref({});
 
-// 按时间从早到晚排序
 const sortedEvents = computed(() => {
   return [...allEvents.value].sort((a, b) => (a.eventYear || 0) - (b.eventYear || 0));
 });
 
-// 所有推荐事件（排除当前事件）
 const allRecommendedEvents = computed(() => {
   return allEvents.value.filter(e => e.id !== currentEvent.value.id);
 });
 
-// 时间轴状态
 const activeEventIndex = ref(0);
 const isNavBouncing = ref(false);
 const scrollWrapper = ref(null);
@@ -359,7 +374,6 @@ const track = ref(null);
 const scrollbarThumb = ref(null);
 const scrollbarTrack = ref(null);
 
-// 推荐事件滚动状态
 const recommendScrollWrapper = ref(null);
 const recommendTrack = ref(null);
 const recommendScrollbarThumb = ref(null);
@@ -372,7 +386,6 @@ let isRecommendDragging = false;
 let bounceTimer = null;
 let isDragging = false;
 
-// 计算滑块位置和宽度
 const thumbPosition = computed(() => {
   if (!scrollWrapper.value) return 0;
   const container = scrollWrapper.value;
@@ -389,7 +402,6 @@ const thumbWidth = computed(() => {
   return Math.max(visibleRatio * 100, 5);
 });
 
-// 推荐事件滚动条位置
 const recommendThumbPosition = computed(() => {
   if (!recommendScrollWrapper.value) return 0;
   const container = recommendScrollWrapper.value;
@@ -406,7 +418,6 @@ const recommendThumbWidth = computed(() => {
   return Math.max(visibleRatio * 100, 5);
 });
 
-// 获取推荐原因
 function getRecommendReason(event) {
   const currentDynasty = currentEvent.value.dynastyName || getDynastyName(currentEvent.value.dynastyId);
   const eventDynasty = event.dynastyName || getDynastyName(event.dynastyId);
@@ -420,13 +431,11 @@ function getRecommendReason(event) {
   return "相关推荐";
 }
 
-// 获取事件类型图标
 function getEventTypeIcon(type) {
   const icons = { political: '🏛️', military: '⚔️', cultural: '📚' };
   return icons[type] || '📜';
 }
 
-// 触发导航栏跳动动画
 function triggerNavBounce() {
   if (bounceTimer) clearTimeout(bounceTimer);
   
@@ -448,7 +457,6 @@ function triggerNavBounce() {
   }
 }
 
-// 查找当前激活的事件卡片
 function findActiveCardByPosition() {
   if (!scrollWrapper.value || !track.value) return 0;
   
@@ -474,7 +482,6 @@ function findActiveCardByPosition() {
   return closestIndex;
 }
 
-// 更新激活状态
 function updateActiveState() {
   if (!scrollWrapper.value) return;
   
@@ -486,7 +493,6 @@ function updateActiveState() {
   }
 }
 
-// 滚动到指定卡片
 function scrollToCard(index, smooth = true) {
   if (!scrollWrapper.value || !track.value) return;
   if (index < 0 || index >= sortedEvents.value.length) return;
@@ -515,7 +521,6 @@ function scrollToCard(index, smooth = true) {
   }
 }
 
-// 跳转到事件详情
 async function jumpToEvent(eventId) {
   try {
     isLoading.value = true;
@@ -540,14 +545,12 @@ async function jumpToEvent(eventId) {
   }
 }
 
-// 加载所有事件列表
 async function loadAllEvents() {
   try {
     isLoading.value = true;
     console.log('=== loadAllEvents 开始 ===');
     
     const dynastyIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
-    console.log('要查询的朝代ID:', dynastyIds);
     
     let allEventsData = [];
     
@@ -565,30 +568,18 @@ async function loadAllEvents() {
     );
     
     const results = await Promise.all(promises);
-    console.log('所有请求完成，结果数量:', results.length);
     
     results.forEach((res, index) => {
-      console.log(`--- 处理朝代 ${dynastyIds[index]} 的响应 ---`);
-      console.log('响应对象:', res);
-      
       if (res && res.data && res.data.code === 200) {
-        console.log('res.data.code 是 200');
         const events = res.data.data?.records || [];
-        console.log(`找到 ${events.length} 条事件`);
-        
         if (events.length > 0) {
-          console.log('事件列表:', events);
           events.forEach(event => {
             event.dynastyName = event.dynastyName || getDynastyName(dynastyIds[index]);
           });
           allEventsData = [...allEventsData, ...events];
         }
-      } else {
-        console.log(`朝代 ${dynastyIds[index]} 响应不是200或响应为空`);
       }
     });
-    
-    console.log('合并后的事件总数:', allEventsData.length);
     
     allEvents.value = allEventsData.sort((a, b) => (a.eventYear || 0) - (b.eventYear || 0));
     console.log('事件列表加载成功，共', allEvents.value.length, '条');
@@ -602,17 +593,16 @@ async function loadAllEvents() {
     ElMessage.error('加载事件列表失败');
   } finally {
     isLoading.value = false;
-    console.log('=== loadAllEvents 结束 ===');
   }
 }
 
-// 加载事件详情
 async function loadEventDetail(eventId) {
   try {
     isLoading.value = true;
     const res = await request.get(`/historical-event/${eventId}`);
     currentEvent.value = res.data.data;
     console.log('事件详情加载成功:', currentEvent.value.eventName);
+    console.log('图片路径:', currentEvent.value.eventPicPath);
   } catch (error) {
     console.error('加载事件详情失败:', error);
     ElMessage.error('加载事件详情失败');
@@ -621,7 +611,6 @@ async function loadEventDetail(eventId) {
   }
 }
 
-// 推荐事件滚动相关函数
 function updateRecommendScrollState() {
   if (!recommendScrollWrapper.value) return;
   recommendScrollLeft.value = recommendScrollWrapper.value.scrollLeft;
@@ -726,7 +715,6 @@ function startRecommendDrag(e) {
   document.addEventListener('mouseup', onDragEnd);
 }
 
-// 拖拽滑块
 function startDrag(e) {
   e.preventDefault();
   isDragging = true;
@@ -755,7 +743,6 @@ function startDrag(e) {
   document.addEventListener('mouseup', onDragEnd);
 }
 
-// 点击滚动条轨道
 function handleTrackClick(e) {
   if (e.target === scrollbarThumb.value) return;
   
@@ -769,7 +756,6 @@ function handleTrackClick(e) {
   updateActiveState();
 }
 
-// 滚轮处理
 function handleWheel(e) {
   if (!scrollWrapper.value) return;
   
@@ -786,7 +772,6 @@ function handleWheel(e) {
   });
 }
 
-// 滚动事件监听
 let ticking = false;
 function onScroll() {
   if (!ticking) {
@@ -798,7 +783,6 @@ function onScroll() {
   }
 }
 
-// 推荐事件滚动监听
 let recommendTicking = false;
 function onRecommendScroll() {
   if (!recommendTicking) {
@@ -885,7 +869,6 @@ function jumpToAllusionDetail(allusionName) {
   ElMessage.success(`正在跳转至典故详情：${allusionName}`);
 }
 
-// 跳转到朝代详情
 function jumpToDynastyDetail(dynastyName) {
   const dynasty = Object.values(dynastyMap).find(item => item.name === dynastyName);
   
@@ -902,27 +885,16 @@ function jumpToDynastyDetail(dynastyName) {
   }
 }
 
-//onMounted生命周期
 onMounted(async () => {
   console.log('=== onMounted 开始 ===');
-  console.log('路由参数 route.query:', route.query);
-  console.log('当前 token:', localStorage.getItem('token'));
   
   await loadAllEvents();
   
-  console.log('loadAllEvents 执行完毕');
-  console.log('allEvents.value.length:', allEvents.value.length);
-  console.log('allEvents.value:', allEvents.value);
-  
   const eventId = route.query.id;
-  console.log('URL中的 eventId:', eventId);
   
   if (eventId) {
-    console.log(`有指定事件ID: ${eventId}，加载详情`);
     await loadEventDetail(parseInt(eventId));
-    
     const eventIndex = sortedEvents.value.findIndex(e => e.id === parseInt(eventId));
-    console.log('找到的事件索引:', eventIndex);
     if (eventIndex !== -1) {
       activeEventIndex.value = eventIndex;
       setTimeout(() => {
@@ -931,15 +903,12 @@ onMounted(async () => {
       }, 300);
     }
   } else if (allEvents.value.length > 0) {
-    console.log('没有指定事件ID，默认显示第一个事件:', allEvents.value[0]);
     await loadEventDetail(allEvents.value[0].id);
     activeEventIndex.value = 0;
     setTimeout(() => {
       scrollToCard(0, false);
       triggerNavBounce();
     }, 300);
-  } else {
-    console.log('没有事件数据，无法显示默认事件');
   }
   
   nextTick(() => {
@@ -1327,12 +1296,20 @@ onUnmounted(() => {
   min-width: 280px;
 }
 
-/* 图片轮播 */
-.image-carousel {
+/* 简单图片容器 */
+.image-container {
   margin-bottom: 30px;
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.event-image-simple {
+  width: 100%;
+  height: 400px;
+  object-fit: cover;
+  display: block;
 }
 
 .image-caption {

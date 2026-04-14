@@ -33,7 +33,10 @@ public class AiServiceImpl implements AiService {
             String question = request.getQuestion();
             if (question == null || question.trim().isEmpty()) {
                 System.out.println("问题为空，返回错误");
-                return ResultVO.error("问题不能为空");
+                ResultVO<AiChatResponse> errorResult = new ResultVO<>();
+                errorResult.setCode(500);
+                errorResult.setMsg("问题不能为空");
+                return errorResult;
             }
 
             System.out.println("开始调用硅基流动 API...");
@@ -46,13 +49,20 @@ public class AiServiceImpl implements AiService {
             response.setModel(request.getModel() != null ? request.getModel() : siliconFlowConfig.getDefaultModel());
 
             System.out.println("返回成功结果");
-            return ResultVO.success(response);
+            ResultVO<AiChatResponse> successResult = new ResultVO<>();
+            successResult.setCode(200);
+            successResult.setMsg("操作成功");
+            successResult.setData(response);
+            return successResult;
 
         } catch (Exception e) {
             System.err.println("========== AI 问答失败 ==========");
             e.printStackTrace();
             System.err.println("错误信息: " + e.getMessage());
-            return ResultVO.error("AI 问答失败: " + e.getMessage());
+            ResultVO<AiChatResponse> errorResult = new ResultVO<>();
+            errorResult.setCode(500);
+            errorResult.setMsg("AI 问答失败: " + e.getMessage());
+            return errorResult;
         }
     }
 
@@ -70,7 +80,11 @@ public class AiServiceImpl implements AiService {
             extension.put("content", "<p>" + result.replace("\n", "</p><p>") + "</p>");
             extension.put("tags", new String[]{"历史", "文化"});
 
-            return ResultVO.success(extension);
+            ResultVO<Object> successResult = new ResultVO<>();
+            successResult.setCode(200);
+            successResult.setMsg("操作成功");
+            successResult.setData(extension);
+            return successResult;
         } catch (Exception e) {
             System.err.println("生成延伸解读失败: " + e.getMessage());
             e.printStackTrace();
@@ -78,7 +92,12 @@ public class AiServiceImpl implements AiService {
             defaultExtension.put("title", "中国历史的文化传承");
             defaultExtension.put("content", "<p>中国历史源远流长，五千年的文明积淀形成了独特的文化传统。</p>");
             defaultExtension.put("tags", new String[]{"文化", "历史"});
-            return ResultVO.success(defaultExtension);
+
+            ResultVO<Object> successResult = new ResultVO<>();
+            successResult.setCode(200);
+            successResult.setMsg("操作成功");
+            successResult.setData(defaultExtension);
+            return successResult;
         }
     }
 
@@ -96,7 +115,11 @@ public class AiServiceImpl implements AiService {
             funFact.put("title", "趣味冷知识");
             funFact.put("image", null);
 
-            return ResultVO.success(funFact);
+            ResultVO<Object> successResult = new ResultVO<>();
+            successResult.setCode(200);
+            successResult.setMsg("操作成功");
+            successResult.setData(funFact);
+            return successResult;
         } catch (Exception e) {
             System.err.println("生成冷知识失败: " + e.getMessage());
             e.printStackTrace();
@@ -104,7 +127,12 @@ public class AiServiceImpl implements AiService {
             defaultFact.put("text", "秦始皇统一六国后，曾五次巡游天下，最后一次在途中病逝。");
             defaultFact.put("title", "秦始皇的趣味冷知识");
             defaultFact.put("image", null);
-            return ResultVO.success(defaultFact);
+
+            ResultVO<Object> successResult = new ResultVO<>();
+            successResult.setCode(200);
+            successResult.setMsg("操作成功");
+            successResult.setData(defaultFact);
+            return successResult;
         }
     }
 
@@ -138,7 +166,11 @@ public class AiServiceImpl implements AiService {
         recommendations.add(rec3);
 
         System.out.println("返回 " + recommendations.size() + " 条推荐");
-        return ResultVO.success(recommendations);
+        ResultVO<Object> successResult = new ResultVO<>();
+        successResult.setCode(200);
+        successResult.setMsg("操作成功");
+        successResult.setData(recommendations);
+        return successResult;
     }
 
     @Override
@@ -146,7 +178,10 @@ public class AiServiceImpl implements AiService {
         System.out.println("========== 记录用户兴趣 ==========");
         System.out.println("用户ID: " + userId);
         System.out.println("问题: " + question);
-        return ResultVO.success();
+        ResultVO<Void> successResult = new ResultVO<>();
+        successResult.setCode(200);
+        successResult.setMsg("操作成功");
+        return successResult;
     }
 
     private String callSiliconFlow(String prompt, String model, Integer maxTokens, Double temperature) throws Exception {

@@ -6,11 +6,7 @@
 <mapper namespace="com.ailab.back.mapper.UserMapper">
 
     <!-- 通用结果集映射，避免重复编写字段映射 -->
-<<<<<<< HEAD
     <resultMap id="UserResultMap" type="com.ailab.back.Entity.User">
-=======
-    <resultMap id="UserResultMap" type="com.ailab.back.bean.User">
->>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
         <id column="id" property="id"/>
         <result column="username" property="username"/>
         <result column="password_hash" property="passwordHash"/>

@@ -1,9 +1,5 @@
 package com.ailab.back.service;
-<<<<<<< HEAD
 import com.ailab.back.Entity.User;
-=======
-import com.ailab.back.bean.User;
->>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 import com.ailab.back.vo.ResultVO;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -35,10 +31,10 @@ public interface UserService extends IService<User> {
      * @return 分页后的用户数据（包含列表和分页信息）
      */
     ResultVO<Page<User>> queryUserBatchByPage(Integer pageNum,
-                                    Integer pageSize,
-                                    String role,
-                                    Byte status,
-                                    String username);
+                                              Integer pageSize,
+                                              String role,
+                                              Byte status,
+                                              String username);
     /**
      * 根据查询用户信息
      * */

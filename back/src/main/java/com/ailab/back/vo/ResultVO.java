@@ -35,10 +35,7 @@ public class ResultVO<T> {
 
     /**
      * 设置响应数据（链式调用支持）
-<<<<<<< HEAD
      *
-=======
->>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
      * @param data 要设置的业务数据
      * @return 当前ResultVO对象（支持链式调用）
      */
@@ -107,40 +104,4 @@ public class ResultVO<T> {
     public static <T> ResultVO<T> error(String msg) {
         return new ResultVO<T>(ERROR_CODE, msg, null);
     }
-<<<<<<< HEAD
-
-
-    /**
-     * 创建成功响应（使用默认消息，带数据）
-     * @param data 业务数据
-     * @param <T> 泛型类型
-     * @return 成功响应的ResultVO对象
-     */
-    public static <T> ResultVO<T> success(T data) {
-        return new ResultVO<T>(SUCCESS_CODE, SUCCESS_MSG, data);
-    }
-
-    /**
-     * 创建成功响应（自定义消息，带数据）
-     * @param msg 自定义成功消息
-     * @param data 业务数据
-     * @param <T> 泛型类型
-     * @return 成功响应的ResultVO对象
-     */
-    public static <T> ResultVO<T> success(String msg, T data) {
-        return new ResultVO<T>(SUCCESS_CODE, msg, data);
-    }
-
-    /**
-     * 创建错误响应（自定义消息，带数据）
-     * @param msg 自定义错误消息
-     * @param data 业务数据
-     * @param <T> 泛型类型
-     * @return 错误响应的ResultVO对象
-     */
-    public static <T> ResultVO<T> error(String msg, T data) {
-        return new ResultVO<T>(ERROR_CODE, msg, data);
-    }
-=======
->>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 }

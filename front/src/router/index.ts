@@ -19,7 +19,6 @@ const router = createRouter({
 			component: () => import("@/views/TimeLineView.vue"),
 		},
 		{
-<<<<<<< HEAD
 			path: '/person',
 			name: 'person',
 			component: () => import("@/views/PersonView.vue"),
@@ -54,21 +53,11 @@ const router = createRouter({
 			path: '/notes',
 			name: 'MyNotes',
 			component: () => import('@/views/NotesView.vue')
-=======
-			path: '/profile',
-			name: 'profile',
-			component: () => import("@/views/ProfileView.vue"),
-			meta: { requiresAuth: true }, // 需要认证才能访问
->>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 		},
 		{
 			path: '/admin',
 			name: 'admin',
-<<<<<<< HEAD
 			redirect: '/admin/user-management',
-=======
-			redirect: '/admin/user-management', // 默认子路由
->>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
 			component: () => import("@/views/admin/AdminView.vue"),
 			children: [
 				{
@@ -91,8 +80,4 @@ const router = createRouter({
 	]
 })
 
-<<<<<<< HEAD
 export default router
-=======
-export default router
->>>>>>> 822a5594a4ae73b06db09ca8f2e5db1ca1651bf5
