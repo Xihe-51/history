@@ -19,20 +19,24 @@ public class SiliconFlowResponse {
     private String systemFingerprint;
 
     @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Choice {
         private Integer index;
         private Message message;
+        private Message delta;
         @JsonProperty("finish_reason")
         private String finishReason;
     }
 
     @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Message {
         private String role;
         private String content;
     }
 
     @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Usage {
         @JsonProperty("prompt_tokens")
         private Integer promptTokens;

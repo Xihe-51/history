@@ -32,6 +32,7 @@ export interface NoteDetailVO {
 export interface NoteStatisticsVO {
     totalCount: number;
     typeStats: { type: string; typeName: string; count: number }[];
+    recentCreate?: { date: string; count: number }[];
 }
 
 // 添加笔记请求参数

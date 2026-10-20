@@ -235,12 +235,13 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import topComponent from '@/components/topComponent.vue';
-import request from '@/utils/request';
+import request, { resolveAssetUrl } from '@/utils/request';
 
 const router = useRouter();
+const route = useRoute();
 
 // 导航栏状态
 const activeDynastyIndex = ref(-1);
@@ -250,7 +251,7 @@ const isNavBouncing = ref(false);
 const filters = ref({
   dynastyId: '',
   tag: '',
-  birthMin: -500,
+  birthMin: -2100,
   birthMax: 1900,
   keyword: '',
   sortBy: 'year'
@@ -382,13 +383,13 @@ function getTagClass(tag) {
 }
 
 function getDynastyName(id) {
-  return dynastyMap.value[id]?.name || '未知朝代';
+  if (!id) return '';
+  return dynastyMap.value[id]?.name || '';
 }
 
 function getAvatarUrl(path) {
   if (!path) return '';
-  if (path.startsWith('http')) return path;
-  return 'http://localhost:8080/api' + path;
+  return resolveAssetUrl(path);
 }
 
 function handleImageError(p) {
@@ -414,7 +415,7 @@ function resetFilters() {
   filters.value = {
     dynastyId: '',
     tag: '',
-    birthMin: -500,
+    birthMin: -2100,
     birthMax: 1900,
     keyword: '',
     sortBy: 'year'
@@ -435,6 +436,32 @@ function goToPage(page) {
 // 数据加载 
 let isLoadingData = false;
 
+/** 拉取全部事件的正文合并文本，用于统计人物关联事件数 */
+async function loadEventTexts() {
+  const dynastyIds = dynastyList.value.map(d => d.id);
+  const results = await Promise.all(dynastyIds.map(id =>
+    request.get('/historical-event/page', {
+      params: { pageNum: 1, pageSize: 1000, dynastyId: id }
+    }).catch(() => null)
+  ));
+  const texts = [];
+  results.forEach(res => {
+    if (res?.data?.code === 200) {
+      (res.data.data?.records || []).forEach(e => {
+        texts.push(`${e.eventName || ''}${e.eventBg || ''}${e.eventProcess || ''}${e.eventImpact || ''}`);
+      });
+    }
+  });
+  return texts;
+}
+
+/** 真实“关联事件”口径：事件正文中出现该人物姓名即算一条（库中无人物-事件关联表） */
+function countEventsMentioning(texts, name) {
+  // 单字姓名易被普通词语命中（如“启”命中“开启”），只统计两字及以上姓名
+  if (!name || name.length < 2) return 0;
+  return texts.filter(t => t.includes(name)).length;
+}
+
 async function loadPersonList() {
   if (isLoadingData) return;
   isLoadingData = true;
@@ -451,12 +478,15 @@ async function loadPersonList() {
     const results = await Promise.all(promises);
     let personsData = [];
 
+    // 先取全部事件正文，再按“正文是否提到该人物”统计真实关联事件数
+    const eventTexts = await loadEventTexts();
+
     results.forEach(res => {
       if (res?.data?.code === 200) {
         const records = res.data.data?.records || [];
         const withEventCount = records.map(p => ({
           ...p,
-          eventCount: p.eventCount ?? Math.floor(Math.random() * 15) + 1
+          eventCount: p.eventCount ?? countEventsMentioning(eventTexts, p.personName)
         }));
         personsData = personsData.concat(withEventCount);
       }
@@ -522,6 +552,10 @@ onMounted(async () => {
   dynastyList.value.forEach(d => {
     dynastyMap.value[d.id] = d;
   });
+  // 支持从典故页“同朝人物 → 查看详情”带 keyword 跳转过来，直接定位该人物
+  if (route.query.keyword) {
+    filters.value.keyword = String(route.query.keyword);
+  }
   await loadPersonList();
 });
 </script>

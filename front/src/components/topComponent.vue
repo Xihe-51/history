@@ -11,6 +11,9 @@
                     <router-link to="/timeline" class="nav-item" active-class="active">
                         <span>时间轴</span>
                     </router-link>
+                    <router-link to="/history-cloud" class="nav-item" active-class="active">
+                        <span>史云</span>
+                    </router-link>
                     <router-link to="/event" class="nav-item" active-class="active">
                         <span>事件科普</span>
                     </router-link>
@@ -25,6 +28,10 @@
                     </router-link>
                     <router-link to="/interactive" class="nav-item" active-class="active">
                         <span>趣味小游戏</span>
+                    </router-link>
+                    <!-- ✅ 新增：管理后台入口，仅 admin 可见 -->
+                    <router-link v-if="userRole === 'admin'" to="/admin" class="nav-item admin-nav" active-class="active">
+                        <span>管理后台</span>
                     </router-link>
                 </nav>
             </div>
@@ -44,6 +51,10 @@
                                 <el-icon><Notebook /></el-icon>
                                 我的笔记
                             </el-dropdown-item>
+                            <el-dropdown-item v-if="userRole === 'admin'" @click="goToAdmin" divided>
+                                <el-icon><Setting /></el-icon>
+                                管理后台
+                            </el-dropdown-item>
                             <el-dropdown-item divided @click="logout">
                                 <el-icon><SwitchButton /></el-icon>
                                 退出登录
@@ -62,13 +73,17 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { User, Notebook, SwitchButton } from '@element-plus/icons-vue';
+import { User, Notebook, SwitchButton, Setting } from '@element-plus/icons-vue';
+import { resolveAssetUrl } from '@/utils/request';
 
 const router = useRouter();
 
 const isLogin = ref(false);
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
 const userAvatar = ref(defaultAvatar);
+
+// 计算用户角色
+const userRole = ref('user');
 
 onMounted(() => {
     const token = localStorage.getItem("token");
@@ -78,13 +93,16 @@ onMounted(() => {
     if (token && token !== 'undefined' && token !== 'null' && token.length > 5) {
         isLogin.value = true;
         
-        // 获取用户信息中的头像
+        // 获取用户信息
         try {
             const userInfo = localStorage.getItem('userInfo');
             if (userInfo) {
                 const info = JSON.parse(userInfo);
+                // 读取角色
+                userRole.value = info.role || 'user';
+                
                 if (info.avatarPath) {
-                    userAvatar.value = `http://localhost:8080/api${info.avatarPath}`;
+                    userAvatar.value = resolveAssetUrl(info.avatarPath);
                 }
             }
         } catch (e) {
@@ -105,6 +123,11 @@ const goToProfile = () => {
 
 const goToMyNotes = () => {
     router.push('/notes');
+};
+
+// 跳转到管理后台
+const goToAdmin = () => {
+    router.push('/admin');
 };
 </script>
 
@@ -183,6 +206,22 @@ const goToMyNotes = () => {
     color: #8B4513;
     font-weight: 600;
     border-bottom: 3px solid #8B4513;
+}
+
+/* ✅ 新增：管理后台特殊样式（可选） */
+.admin-nav {
+    color: #d4a373;
+}
+
+.admin-nav:hover {
+    background-color: #f5e6d3;
+    color: #b8860b;
+}
+
+.admin-nav.active {
+    background-color: #f5e6d3;
+    color: #b8860b;
+    border-bottom-color: #b8860b;
 }
 
 .user-center {

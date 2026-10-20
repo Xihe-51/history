@@ -135,6 +135,11 @@
       <template v-if="activeFirstType === 'allusion'">
         <el-table-column prop="allusionName" label="典故名称"/>
         <el-table-column prop="source" label="出处" />
+        <el-table-column label="所属朝代">
+          <template #default="scope">
+            {{ dynastyList.find(item => String(item.id) === String(scope.row.dynastyId))?.name || '—' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="themeType" label="主题类型" />
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="scope">
@@ -287,7 +292,7 @@
               />
               <img 
                 v-else-if="formData.mapPath" 
-                :src="formData.mapPath" 
+                :src="resolveAssetUrl(formData.mapPath)" 
                 alt="现有朝代地图" 
                 class="image-preview"
               />
@@ -311,6 +316,16 @@
           </el-form-item>
           <el-form-item label="出处" prop="source">
             <el-input v-model="formData.source" placeholder="请输入古籍出处" />
+          </el-form-item>
+          <el-form-item label="所属朝代" prop="dynastyId">
+            <el-select v-model="formData.dynastyId" placeholder="请选择所属朝代" clearable>
+              <el-option
+                v-for="item in dynastyList"
+                :key="item.id"
+                :label="item.name"
+                :value="item.id"
+              />
+            </el-select>
           </el-form-item>
           <el-form-item label="原文" prop="originalText">
             <el-input v-model="formData.originalText" type="textarea" rows="3" placeholder="请输入原文" />
@@ -354,7 +369,7 @@
               />
               <img 
                 v-else-if="formData.multimediaPath && isImageFile(formData.multimediaPath)" 
-                :src="formData.multimediaPath" 
+                :src="resolveAssetUrl(formData.multimediaPath)" 
                 alt="现有多媒体" 
                 class="image-preview"
               />
@@ -368,7 +383,7 @@
               >您的浏览器不支持视频播放</video>
               <video 
                 v-else-if="formData.multimediaPath && isVideoFile(formData.multimediaPath)" 
-                :src="formData.multimediaPath" 
+                :src="resolveAssetUrl(formData.multimediaPath)" 
                 controls 
                 class="video-preview"
               >您的浏览器不支持视频播放</video>
@@ -382,7 +397,7 @@
               >您的浏览器不支持音频播放</audio>
               <audio 
                 v-else-if="formData.multimediaPath && isAudioFile(formData.multimediaPath)" 
-                :src="formData.multimediaPath" 
+                :src="resolveAssetUrl(formData.multimediaPath)" 
                 controls 
                 class="audio-preview"
               >您的浏览器不支持音频播放</audio>
@@ -502,7 +517,7 @@
               />
               <img 
                 v-else-if="formData.eventPicPath" 
-                :src="formData.eventPicPath" 
+                :src="resolveAssetUrl(formData.eventPicPath)" 
                 alt="现有事件配图" 
                 class="image-preview"
               />
@@ -578,7 +593,7 @@
               />
               <img 
                 v-else-if="formData.avatarPath" 
-                :src="formData.avatarPath" 
+                :src="resolveAssetUrl(formData.avatarPath)" 
                 alt="现有人物头像" 
                 class="avatar-preview"
               />
@@ -610,20 +625,22 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, ElEmpty } from 'element-plus'
 import { Search, Upload, Plus, Delete } from '@element-plus/icons-vue'
+import request, { resolveAssetUrl, errorMessage } from '@/utils/request'
+import { uploadFile } from '@/api/file'
 
-// 数据类型映射
-const dataTypeMap = {
-  dynasty: '朝代',
-  dynastyStage: '朝代阶段',
-  historicalEvent: '历史事件',
-  historicalPerson: '历史人物',
-  allusion: '典故'
+// 数据类型 -> 后端接口前缀
+const apiPrefixMap = {
+  dynasty: '/dynasty',
+  allusion: '/allusion',
+  dynastyStage: '/dynasty-stage',
+  historicalEvent: '/historical-event',
+  historicalPerson: '/historical-person'
 }
 
 // 响应式数据
 const activeFirstType = ref('dynasty') // 一级类型：dynasty/allusion
 const activeSubType = ref('') // 朝代子级类型：dynastyStage/historicalEvent/historicalPerson
-const selectedDynastyId = ref('') // 选中的朝代ID
+const selectedDynastyId = ref(null) // 选中的朝代ID
 const dynastyList = ref([]) // 朝代列表（用于选择）
 const loading = ref(false) // 表格加载状态
 const selectedIds = ref([]) // 选中的ID集合
@@ -643,6 +660,12 @@ const previewFiles = reactive({
 // 计算属性：是否为子级类型
 const isSubType = computed(() => !!activeSubType.value)
 
+// 当前操作的数据类型（朝代/典故/朝代阶段/历史事件/历史人物）
+const currentDataType = computed(() => {
+  if (activeFirstType.value === 'allusion') return 'allusion'
+  return activeSubType.value || 'dynasty'
+})
+
 // 搜索表单
 const searchForm = reactive({
   keyword: ''
@@ -655,7 +678,7 @@ const pagination = reactive({
   total: 0
 })
 
-// 模拟表格数据
+// 表格数据
 const tableData = ref([])
 
 // 表单数据
@@ -665,12 +688,12 @@ const formData = reactive({})
 const formRules = reactive({
   // 朝代校验规则
   name: [{ required: true, message: '请输入朝代名称', trigger: 'blur' }],
-  startYear: [{ required: true, message: '请输入起始年份', trigger: 'blur', type: 'number' }],
-  endYear: [{ required: true, message: '请输入结束年份', trigger: 'blur', type: 'number' }],
+  startYear: [{ required: true, message: '请输入起始年份', trigger: 'blur' }],
+  endYear: [{ required: true, message: '请输入结束年份', trigger: 'blur' }],
   // 事件校验规则
   eventName: [{ required: true, message: '请输入事件名称', trigger: 'blur' }],
   dynastyId: [{ required: true, message: '请选择所属朝代', trigger: 'change' }],
-  eventYear: [{ required: true, message: '请输入事件年份', trigger: 'blur', type: 'number' }],
+  eventYear: [{ required: true, message: '请输入事件年份', trigger: 'blur' }],
   eventType: [{ required: true, message: '请选择事件类型', trigger: 'change' }],
   // 人物校验规则
   personName: [{ required: true, message: '请输入人物姓名', trigger: 'blur' }],
@@ -736,142 +759,132 @@ const isMediaFile = (filePath) => {
 
 // 获取搜索框占位符
 const getSearchPlaceholder = () => {
-  if (activeFirstType === 'dynasty' && !activeSubType) {
-    return '请输入朝代名称/开国者/都城搜索'
-  } else if (activeFirstType === 'allusion') {
-    return '请输入典故名称/出处/主题类型搜索'
-  } else if (activeSubType === 'dynastyStage') {
+  if (activeFirstType.value === 'dynasty' && !activeSubType.value) {
+    return '请输入朝代名称搜索'
+  } else if (activeFirstType.value === 'allusion') {
+    return '请输入典故名称搜索'
+  } else if (activeSubType.value === 'dynastyStage') {
     return '请输入阶段名称搜索'
-  } else if (activeSubType === 'historicalEvent') {
-    return '请输入事件名称/类型搜索'
-  } else if (activeSubType === 'historicalPerson') {
-    return '请输入人物姓名/身份类型搜索'
+  } else if (activeSubType.value === 'historicalEvent') {
+    return '请输入事件名称搜索'
+  } else if (activeSubType.value === 'historicalPerson') {
+    return '请输入人物姓名搜索'
   }
   return '请输入关键词搜索'
 }
 
 // 获取空状态描述
 const getEmptyDescription = () => {
-  if (activeFirstType === 'dynasty' && !activeSubType) {
-    return '暂无朝代数据'
-  } else if (activeFirstType === 'allusion') {
-    return '暂无典故数据'
-  } else if (!selectedDynastyId) {
+  if (activeSubType.value && !selectedDynastyId.value) {
     return '请先选择朝代'
-  } else if (activeSubType === 'dynastyStage') {
-    return `暂无【${dynastyList.value.find(item => item.id === selectedDynastyId)?.name}】的阶段数据`
-  } else if (activeSubType === 'historicalEvent') {
-    return `暂无【${dynastyList.value.find(item => item.id === selectedDynastyId)?.name}】的事件数据`
-  } else if (activeSubType === 'historicalPerson') {
-    return `暂无【${dynastyList.value.find(item => item.id === selectedDynastyId)?.name}】的人物数据`
+  }
+  if (activeFirstType.value === 'dynasty' && !activeSubType.value) {
+    return '暂无朝代数据'
+  } else if (activeFirstType.value === 'allusion') {
+    return '暂无典故数据'
+  } else if (activeSubType.value === 'dynastyStage') {
+    return `暂无【${dynastyList.value.find(item => item.id === selectedDynastyId.value)?.name}】的阶段数据`
+  } else if (activeSubType.value === 'historicalEvent') {
+    return `暂无【${dynastyList.value.find(item => item.id === selectedDynastyId.value)?.name}】的事件数据`
+  } else if (activeSubType.value === 'historicalPerson') {
+    return `暂无【${dynastyList.value.find(item => item.id === selectedDynastyId.value)?.name}】的人物数据`
   }
   return '暂无数据'
 }
 
-// 加载朝代列表（用于选择）
-const loadDynastyList = () => {
-  // 模拟接口请求
-  dynastyList.value = [
-    { id: 1, name: '秦朝', startYear: -221, endYear: -207 },
-    { id: 2, name: '汉朝', startYear: -202, endYear: 220 },
-    { id: 3, name: '唐朝', startYear: 618, endYear: 907 }
-  ]
+// 统一校验后端业务响应：code !== 200 视为失败（HTTP 层仍为 200）
+const ensureOk = (res) => {
+  const body = res?.data
+  if (!body || body.code !== 200) {
+    throw new Error(body?.msg || '操作失败')
+  }
+  return body.data
 }
 
-// 初始化模拟数据
-const initMockData = () => {
+// 加载朝代列表（用于下拉选择）
+const loadDynastyList = async () => {
+  try {
+    const res = await request.get('/dynasty/list/all')
+    dynastyList.value = ensureOk(res) || []
+  } catch (e) {
+    ElMessage.error(errorMessage(e, '加载朝代列表失败'))
+    dynastyList.value = []
+  }
+}
+
+// 加载表格数据（按当前类型分页 / 关键词查询）
+const loadTableData = async () => {
+  // 子级数据必须选中所属朝代
+  if (isSubType.value && !selectedDynastyId.value) {
+    tableData.value = []
+    pagination.total = 0
+    return
+  }
   loading.value = true
-  // 模拟异步请求
-  setTimeout(() => {
-    // 一级类型：朝代
-    if (activeFirstType.value === 'dynasty' && !activeSubType.value) {
-      tableData.value = [
-        { id: 1, name: '秦朝', startYear: -221, endYear: -207, capital: '咸阳', founder: '嬴政' },
-        { id: 2, name: '汉朝', startYear: -202, endYear: 220, capital: '长安、洛阳', founder: '刘邦' },
-        { id: 3, name: '唐朝', startYear: 618, endYear: 907, capital: '长安', founder: '李渊' },
-        { id: 3, name: '唐朝', startYear: 618, endYear: 907, capital: '长安', founder: '李渊' },
-        { id: 3, name: '唐朝', startYear: 618, endYear: 907, capital: '长安', founder: '李渊' },
-        { id: 3, name: '唐朝', startYear: 618, endYear: 907, capital: '长安', founder: '李渊' },
-        { id: 3, name: '唐朝', startYear: 618, endYear: 907, capital: '长安', founder: '李渊' },
-        { id: 3, name: '唐朝', startYear: 618, endYear: 907, capital: '长安', founder: '李渊' },
-        { id: 3, name: '唐朝', startYear: 618, endYear: 907, capital: '长安', founder: '李渊' },
-      ]
+  try {
+    const type = currentDataType.value
+    const keyword = (searchForm.keyword || '').trim() || undefined
+    const base = { pageNum: pagination.pageNum, pageSize: pagination.pageSize }
+    let res
+    if (type === 'dynasty') {
+      res = await request.get('/dynasty/page', { params: { ...base, name: keyword } })
+    } else if (type === 'allusion') {
+      res = await request.get('/allusion/page', { params: { ...base, allusionName: keyword } })
+    } else if (type === 'dynastyStage') {
+      res = await request.get('/dynasty-stage/page', { params: { ...base, dynastyId: selectedDynastyId.value, stageName: keyword } })
+    } else if (type === 'historicalEvent') {
+      res = await request.get('/historical-event/page', { params: { ...base, dynastyId: selectedDynastyId.value, eventName: keyword } })
+    } else if (type === 'historicalPerson') {
+      res = await request.get('/historical-person/page', { params: { ...base, dynastyId: selectedDynastyId.value, personName: keyword } })
     }
-    // 一级类型：典故
-    else if (activeFirstType.value === 'allusion') {
-      tableData.value = [
-        { id: 1, allusionName: '指鹿为马', source: '《史记·秦始皇本纪》', themeType: '权谋' },
-        { id: 2, allusionName: '沉鱼落雁', source: '《庄子·齐物论》', themeType: '形容' },
-        { id: 3, allusionName: '破釜沉舟', source: '《史记·项羽本纪》', themeType: '励志' }
-      ]
-    }
-    // 朝代子级：阶段
-    else if (activeSubType.value === 'dynastyStage' && selectedDynastyId.value) {
-      const stageMap = {
-        1: [{ id: 1, dynastyId: 1, stageName: '秦朝统一', startYear: -221, endYear: -207 }],
-        2: [{ id: 2, dynastyId: 2, stageName: '西汉', startYear: -202, endYear: 8 }, { id: 3, dynastyId: 2, stageName: '东汉', startYear: 25, endYear: 220 }],
-        3: [{ id: 4, dynastyId: 3, stageName: '盛唐', startYear: 618, endYear: 755 }, { id: 5, dynastyId: 3, stageName: '晚唐', startYear: 756, endYear: 907 }]
-      }
-      tableData.value = stageMap[selectedDynastyId.value] || []
-    }
-    // 朝代子级：事件
-    else if (activeSubType.value === 'historicalEvent' && selectedDynastyId.value) {
-      const eventMap = {
-        1: [{ id: 1, dynastyId: 1, stageId: null, eventName: '秦始皇统一六国', eventYear: -221, eventType: '政治' }],
-        2: [{ id: 2, dynastyId: 2, stageId: null, eventName: '张骞出使西域', eventYear: -138, eventType: '外交' }],
-        3: [{ id: 3, dynastyId: 3, stageId: 4, eventName: '安史之乱', eventYear: 755, eventType: '军事' }]
-      }
-      tableData.value = eventMap[selectedDynastyId.value] || []
-    }
-    // 朝代子级：人物
-    else if (activeSubType.value === 'historicalPerson' && selectedDynastyId.value) {
-      const personMap = {
-        1: [{ id: 1, dynastyId: 1, personName: '秦始皇', birthYear: -259, deathYear: -210, identityType: '帝王', tags: ['政治家', '军事家'] }],
-        2: [{ id: 2, dynastyId: 2, personName: '司马迁', birthYear: -145, deathYear: -86, identityType: '文人', tags: ['史学家'] }],
-        3: [{ id: 3, dynastyId: 3, personName: '李白', birthYear: 701, deathYear: 762, identityType: '文人', tags: ['诗人', '酒仙'] }]
-      }
-      tableData.value = personMap[selectedDynastyId.value] || []
-    } else {
-      tableData.value = []
-    }
-    pagination.total = tableData.value.length
+    const page = ensureOk(res)
+    tableData.value = page?.records || []
+    pagination.total = page?.total || 0
+  } catch (e) {
+    ElMessage.error(errorMessage(e, '加载数据失败'))
+    tableData.value = []
+    pagination.total = 0
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
 // 一级类型切换
 const handleFirstTypeChange = () => {
   // 切换一级类型时重置子级状态
   activeSubType.value = ''
-  selectedDynastyId.value = ''
+  selectedDynastyId.value = null
+  searchForm.keyword = ''
   pagination.pageNum = 1
-  if (activeFirstType.value === 'dynasty') {
-    loadDynastyList()
-  }
-  initMockData()
+  loadTableData()
 }
 
 // 朝代选择变更
 const handleDynastyChange = () => {
+  searchForm.keyword = ''
   pagination.pageNum = 1
-  initMockData()
+  // 仅子级数据（阶段/事件/人物）依赖所选朝代，朝代列表本身不受影响
+  if (isSubType.value) {
+    loadTableData()
+  }
 }
 
 // 子级类型切换
 const handleSubTypeChange = () => {
+  searchForm.keyword = ''
   pagination.pageNum = 1
-  initMockData()
+  loadTableData()
 }
 
 // 搜索
 const handleSearch = () => {
   pagination.pageNum = 1
-  initMockData()
+  loadTableData()
 }
 
 // 分页变更
 const handlePageChange = () => {
-  initMockData()
+  loadTableData()
 }
 
 // 选择项变更
@@ -879,18 +892,36 @@ const handleSelectionChange = (val) => {
   selectedIds.value = val.map(item => item.id)
 }
 
-// 文件上传（带预览）
-const handleUpload = (field, file) => {
-  // 存储预览URL和文件名
-  previewFiles[field] = URL.createObjectURL(file.raw)
+// 根据文件 MIME 判断上传资源类型
+const getResourceType = (file) => {
+  const type = file?.type || ''
+  if (type.startsWith('video/')) return '视频'
+  if (type.startsWith('audio/')) return '音频'
+  return '图片'
+}
+
+// 清空预览
+const resetPreviewFiles = () => {
+  Object.keys(previewFiles).forEach(key => {
+    previewFiles[key] = ''
+  })
+}
+
+// 文件上传（真实上传，并记录后端返回的访问路径）
+const handleUpload = async (field, file) => {
   if (field === 'multimediaPath') {
     previewFiles.multimediaPathName = file.name
   }
-  
-  // 更新表单数据
-  formData[field] = previewFiles[field]
-  
-  ElMessage.success(`${file.name} 上传预览成功`)
+  try {
+    const res = await uploadFile({ file: file.raw, resourceType: getResourceType(file.raw) })
+    const path = ensureOk(res)
+    if (!path) throw new Error('上传失败')
+    formData[field] = path
+    previewFiles[field] = resolveAssetUrl(path)
+    ElMessage.success(`${file.name} 上传成功`)
+  } catch (e) {
+    ElMessage.error(errorMessage(e, '文件上传失败'))
+  }
 }
 
 // Excel文件变更（批量导入）
@@ -907,12 +938,29 @@ const handleFileChange = (file) => {
       cancelButtonText: '取消',
       type: 'info'
     }
-  ).then(() => {
-    setTimeout(() => {
-      ElMessage.success('导入成功')
-      initMockData()
-    }, 1000)
-  })
+  ).then(async () => {
+    try {
+      const fd = new FormData()
+      fd.append('file', file.raw)
+      fd.append('dataType', currentDataType.value)
+      if (isSubType.value) {
+        fd.append('dynastyId', selectedDynastyId.value)
+      }
+      const res = await request.post('/content/import', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      const data = ensureOk(res)
+      const msg = res.data?.msg || '导入完成'
+      if (data && data.failCount > 0) {
+        ElMessage.warning(msg)
+      } else {
+        ElMessage.success(msg)
+      }
+      await loadTableData()
+    } catch (e) {
+      ElMessage.error(errorMessage(e, '导入失败'))
+    }
+  }).catch(() => {})
 }
 
 // 新增
@@ -924,10 +972,7 @@ const handleAdd = () => {
   Object.keys(formData).forEach(key => {
     delete formData[key]
   })
-  // 清空预览文件
-  Object.keys(previewFiles).forEach(key => {
-    previewFiles[key] = ''
-  })
+  resetPreviewFiles()
   // 子级类型默认填充选中的朝代ID
   if (isSubType.value && selectedDynastyId.value) {
     formData.dynastyId = selectedDynastyId.value
@@ -940,10 +985,7 @@ const handleEdit = (row) => {
   dialogType.value = 'edit'
   // 重置表单
   formRef.value?.resetFields()
-  // 清空预览文件
-  Object.keys(previewFiles).forEach(key => {
-    previewFiles[key] = ''
-  })
+  resetPreviewFiles()
   // 复制行数据到表单
   Object.assign(formData, { ...row })
   dialogVisible.value = true
@@ -959,11 +1001,15 @@ const handleDelete = (id) => {
       cancelButtonText: '取消',
       type: 'warning'
     }
-  ).then(() => {
-    tableData.value = tableData.value.filter(item => item.id !== id)
-    pagination.total = tableData.value.length
-    ElMessage.success('删除成功!')
-  })
+  ).then(async () => {
+    try {
+      await request.delete(`${apiPrefixMap[currentDataType.value]}/delete/${id}`)
+      ElMessage.success('删除成功!')
+      await loadTableData()
+    } catch (e) {
+      ElMessage.error(errorMessage(e, '删除失败'))
+    }
+  }).catch(() => {})
 }
 
 // 批量删除
@@ -976,45 +1022,81 @@ const handleBatchDelete = () => {
       cancelButtonText: '取消',
       type: 'warning'
     }
-  ).then(() => {
-    tableData.value = tableData.value.filter(item => !selectedIds.value.includes(item.id))
-    pagination.total = tableData.value.length
-    selectedIds.value = []
-    ElMessage.success('批量删除成功!')
-  })
+  ).then(async () => {
+    try {
+      await request.delete(`${apiPrefixMap[currentDataType.value]}/delete/batch`, {
+        data: selectedIds.value
+      })
+      ElMessage.success('批量删除成功!')
+      selectedIds.value = []
+      await loadTableData()
+    } catch (e) {
+      ElMessage.error(errorMessage(e, '批量删除失败'))
+    }
+  }).catch(() => {})
+}
+
+// 数字字段转换（空值转 null）
+const toNumberOrNull = (val) => {
+  if (val === '' || val === null || val === undefined) return null
+  const num = Number(val)
+  return Number.isNaN(num) ? null : num
+}
+
+// 组装提交给后端的数据
+const buildPayload = () => {
+  const type = currentDataType.value
+  const payload = { ...formData }
+  delete payload.createdTime
+  delete payload.updatedTime
+  if (type === 'dynasty') {
+    payload.startYear = toNumberOrNull(payload.startYear)
+    payload.endYear = toNumberOrNull(payload.endYear)
+  } else if (type === 'dynastyStage') {
+    payload.dynastyId = toNumberOrNull(payload.dynastyId)
+    payload.startYear = toNumberOrNull(payload.startYear)
+    payload.endYear = toNumberOrNull(payload.endYear)
+  } else if (type === 'historicalEvent') {
+    payload.dynastyId = toNumberOrNull(payload.dynastyId)
+    payload.stageId = toNumberOrNull(payload.stageId)
+    payload.eventYear = toNumberOrNull(payload.eventYear)
+  } else if (type === 'historicalPerson') {
+    payload.dynastyId = toNumberOrNull(payload.dynastyId)
+    payload.birthYear = toNumberOrNull(payload.birthYear)
+    payload.deathYear = toNumberOrNull(payload.deathYear)
+    if (!Array.isArray(payload.tags)) payload.tags = []
+  } else if (type === 'allusion') {
+    payload.dynastyId = toNumberOrNull(payload.dynastyId)
+  }
+  return payload
 }
 
 // 提交表单
 const handleSubmit = () => {
-  formRef.value.validate((valid) => {
+  formRef.value.validate(async (valid) => {
     if (!valid) return
-    setTimeout(() => {
+    const prefix = apiPrefixMap[currentDataType.value]
+    const payload = buildPayload()
+    try {
       if (dialogType.value === 'add') {
-        // 新增
-        formData.id = tableData.value.length + 1
-        tableData.value.unshift({ ...formData })
+        await request.post(`${prefix}/add`, payload)
       } else {
-        // 编辑
-        const index = tableData.value.findIndex(item => item.id === formData.id)
-        if (index !== -1) {
-          tableData.value[index] = { ...formData }
-        }
+        await request.put(`${prefix}/update`, payload)
       }
-      pagination.total = tableData.value.length
       dialogVisible.value = false
-      // 清空预览文件
-      Object.keys(previewFiles).forEach(key => {
-        previewFiles[key] = ''
-      })
+      resetPreviewFiles()
       ElMessage.success(`${dialogType.value === 'add' ? '新增' : '编辑'}成功`)
-    }, 500)
+      await loadTableData()
+    } catch (e) {
+      ElMessage.error(errorMessage(e, '保存失败'))
+    }
   })
 }
 
 // 初始化
 onMounted(() => {
   loadDynastyList()
-  initMockData()
+  loadTableData()
 })
 </script>
 

@@ -5,17 +5,21 @@ import com.ailab.back.DTO.*;
 import com.ailab.back.service.AiService;
 import com.ailab.back.vo.ResultVO;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.util.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+@Slf4j
 @Service
 public class AiServiceImpl implements AiService {
 
@@ -26,119 +30,74 @@ public class AiServiceImpl implements AiService {
 
     @Override
     public ResultVO<AiChatResponse> chat(AiChatRequest request) {
-        System.out.println("========== 收到 AI 问答请求 ==========");
-        System.out.println("问题: " + request.getQuestion());
-
         try {
             String question = request.getQuestion();
             if (question == null || question.trim().isEmpty()) {
-                System.out.println("问题为空，返回错误");
-                ResultVO<AiChatResponse> errorResult = new ResultVO<>();
-                errorResult.setCode(500);
-                errorResult.setMsg("问题不能为空");
-                return errorResult;
+                return ResultVO.error("问题不能为空");
             }
 
-            System.out.println("开始调用硅基流动 API...");
-            String answer = callSiliconFlow(question, request.getModel(),
+            String answer = callSiliconFlow(question.trim(), request.getModel(),
                     request.getMaxTokens(), request.getTemperature());
-            System.out.println("硅基流动 API 返回成功，回答长度: " + answer.length());
 
             AiChatResponse response = new AiChatResponse();
             response.setAnswer(answer);
             response.setModel(request.getModel() != null ? request.getModel() : siliconFlowConfig.getDefaultModel());
 
-            System.out.println("返回成功结果");
-            ResultVO<AiChatResponse> successResult = new ResultVO<>();
-            successResult.setCode(200);
-            successResult.setMsg("操作成功");
-            successResult.setData(response);
-            return successResult;
+            return ResultVO.<AiChatResponse>success("操作成功").setData(response);
 
         } catch (Exception e) {
-            System.err.println("========== AI 问答失败 ==========");
-            e.printStackTrace();
-            System.err.println("错误信息: " + e.getMessage());
-            ResultVO<AiChatResponse> errorResult = new ResultVO<>();
-            errorResult.setCode(500);
-            errorResult.setMsg("AI 问答失败: " + e.getMessage());
-            return errorResult;
+            log.warn("AI 问答失败: {}", e.getMessage());
+            return ResultVO.error("AI 问答失败：" + e.getMessage());
         }
     }
 
     @Override
     public ResultVO<Object> generateExtension() {
-        System.out.println("========== 生成延伸解读 ==========");
         try {
             String prompt = "请生成一段关于中国历史的延伸解读内容，要求有标题、内容和相关标签。";
-            System.out.println("调用硅基流动 API 生成延伸解读...");
             String result = callSiliconFlow(prompt, null, 300, 0.8);
-            System.out.println("延伸解读生成成功，长度: " + result.length());
 
             Map<String, Object> extension = new HashMap<>();
             extension.put("title", "历史延伸解读");
             extension.put("content", "<p>" + result.replace("\n", "</p><p>") + "</p>");
             extension.put("tags", new String[]{"历史", "文化"});
 
-            ResultVO<Object> successResult = new ResultVO<>();
-            successResult.setCode(200);
-            successResult.setMsg("操作成功");
-            successResult.setData(extension);
-            return successResult;
+            return ResultVO.success("操作成功").setData(extension);
         } catch (Exception e) {
-            System.err.println("生成延伸解读失败: " + e.getMessage());
-            e.printStackTrace();
+            // AI 不可用时降级为内置科普内容，保证页面仍可展示
+            log.warn("生成延伸解读失败，使用默认内容: {}", e.getMessage());
             Map<String, Object> defaultExtension = new HashMap<>();
             defaultExtension.put("title", "中国历史的文化传承");
             defaultExtension.put("content", "<p>中国历史源远流长，五千年的文明积淀形成了独特的文化传统。</p>");
             defaultExtension.put("tags", new String[]{"文化", "历史"});
-
-            ResultVO<Object> successResult = new ResultVO<>();
-            successResult.setCode(200);
-            successResult.setMsg("操作成功");
-            successResult.setData(defaultExtension);
-            return successResult;
+            return ResultVO.success("操作成功").setData(defaultExtension);
         }
     }
 
     @Override
     public ResultVO<Object> generateFunFact() {
-        System.out.println("========== 生成趣味冷知识 ==========");
         try {
             String prompt = "请生成一个关于中国历史人物的趣味冷知识，要求简短有趣。";
-            System.out.println("调用硅基流动 API 生成冷知识...");
             String result = callSiliconFlow(prompt, null, 200, 0.9);
-            System.out.println("冷知识生成成功，长度: " + result.length());
 
             Map<String, Object> funFact = new HashMap<>();
             funFact.put("text", result);
             funFact.put("title", "趣味冷知识");
             funFact.put("image", null);
 
-            ResultVO<Object> successResult = new ResultVO<>();
-            successResult.setCode(200);
-            successResult.setMsg("操作成功");
-            successResult.setData(funFact);
-            return successResult;
+            return ResultVO.success("操作成功").setData(funFact);
         } catch (Exception e) {
-            System.err.println("生成冷知识失败: " + e.getMessage());
-            e.printStackTrace();
+            log.warn("生成冷知识失败，使用默认内容: {}", e.getMessage());
             Map<String, Object> defaultFact = new HashMap<>();
             defaultFact.put("text", "秦始皇统一六国后，曾五次巡游天下，最后一次在途中病逝。");
             defaultFact.put("title", "秦始皇的趣味冷知识");
             defaultFact.put("image", null);
-
-            ResultVO<Object> successResult = new ResultVO<>();
-            successResult.setCode(200);
-            successResult.setMsg("操作成功");
-            successResult.setData(defaultFact);
-            return successResult;
+            return ResultVO.success("操作成功").setData(defaultFact);
         }
     }
 
     @Override
     public ResultVO<Object> getRecommendations() {
-        System.out.println("========== 获取推荐内容 ==========");
         List<Map<String, Object>> recommendations = new ArrayList<>();
 
         Map<String, Object> rec1 = new HashMap<>();
@@ -165,32 +124,17 @@ public class AiServiceImpl implements AiService {
         rec3.put("category", "文学");
         recommendations.add(rec3);
 
-        System.out.println("返回 " + recommendations.size() + " 条推荐");
-        ResultVO<Object> successResult = new ResultVO<>();
-        successResult.setCode(200);
-        successResult.setMsg("操作成功");
-        successResult.setData(recommendations);
-        return successResult;
+        return ResultVO.success("操作成功").setData(recommendations);
     }
 
     @Override
     public ResultVO<Void> recordInterest(Long userId, String question) {
-        System.out.println("========== 记录用户兴趣 ==========");
-        System.out.println("用户ID: " + userId);
-        System.out.println("问题: " + question);
-        ResultVO<Void> successResult = new ResultVO<>();
-        successResult.setCode(200);
-        successResult.setMsg("操作成功");
-        return successResult;
+        // 当前仅记录日志，后续可落库到 AI 互动记录表
+        log.info("记录用户兴趣 userId={} question={}", userId, question);
+        return ResultVO.<Void>success("操作成功");
     }
 
     private String callSiliconFlow(String prompt, String model, Integer maxTokens, Double temperature) throws Exception {
-        System.out.println("========== 调用硅基流动 API ==========");
-        System.out.println("模型: " + (model != null ? model : siliconFlowConfig.getDefaultModel()));
-        System.out.println("MaxTokens: " + (maxTokens != null ? maxTokens : siliconFlowConfig.getMaxTokens()));
-        System.out.println("Temperature: " + (temperature != null ? temperature : siliconFlowConfig.getTemperature()));
-        System.out.println("Prompt: " + (prompt.length() > 100 ? prompt.substring(0, 100) + "..." : prompt));
-
         SiliconFlowRequest request = SiliconFlowRequest.builder()
                 .model(model != null ? model : siliconFlowConfig.getDefaultModel())
                 .maxTokens(maxTokens != null ? maxTokens : siliconFlowConfig.getMaxTokens())
@@ -205,37 +149,43 @@ public class AiServiceImpl implements AiService {
                 .build();
 
         String requestBody = objectMapper.writeValueAsString(request);
-        System.out.println("请求体长度: " + requestBody.length());
 
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+        // 修复：配置项 siliconflow.timeout 之前未生效，第三方接口无响应时会长时间占住请求线程
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setConnectTimeout(Timeout.ofSeconds(Math.max(1, siliconFlowConfig.getTimeout())))
+                .setResponseTimeout(Timeout.ofSeconds(Math.max(1, siliconFlowConfig.getTimeout())))
+                .build();
+
+        try (CloseableHttpClient httpClient = HttpClients.custom()
+                .setDefaultRequestConfig(requestConfig)
+                .build()) {
             HttpPost httpPost = new HttpPost(siliconFlowConfig.getApiUrl());
             httpPost.setHeader("Authorization", "Bearer " + siliconFlowConfig.getApiKey());
-            httpPost.setHeader("Content-Type", "application/json");
+            httpPost.setHeader("Content-Type", "application/json; charset=UTF-8");
             httpPost.setEntity(new StringEntity(requestBody, StandardCharsets.UTF_8));
 
-            System.out.println("发送请求到: " + siliconFlowConfig.getApiUrl());
             return httpClient.execute(httpPost, response -> {
                 int statusCode = response.getCode();
                 String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-                System.out.println("响应状态码: " + statusCode);
-                System.out.println("响应体长度: " + responseBody.length());
 
                 if (statusCode != 200) {
-                    System.err.println("API返回错误状态码: " + statusCode);
-                    System.err.println("错误响应: " + (responseBody.length() > 500 ? responseBody.substring(0, 500) + "..." : responseBody));
-                    throw new RuntimeException("API返回错误: " + statusCode);
+                    log.warn("硅基流动 API 返回 {}：{}", statusCode,
+                            responseBody.length() > 300 ? responseBody.substring(0, 300) + "..." : responseBody);
+                    throw new RuntimeException("AI 服务返回错误（HTTP " + statusCode + "），请稍后重试");
                 }
 
-                System.out.println("解析响应JSON...");
                 SiliconFlowResponse siliconResponse = objectMapper.readValue(responseBody, SiliconFlowResponse.class);
-                if (siliconResponse.getChoices() == null || siliconResponse.getChoices().isEmpty()) {
-                    System.err.println("API返回内容为空");
-                    throw new RuntimeException("API返回内容为空");
+                if (siliconResponse.getChoices() == null || siliconResponse.getChoices().isEmpty()
+                        || siliconResponse.getChoices().get(0).getMessage() == null) {
+                    throw new RuntimeException("AI 返回内容为空");
                 }
 
                 String content = siliconResponse.getChoices().get(0).getMessage().getContent();
-                System.out.println("成功获取回答，长度: " + content.length());
-                System.out.println("回答内容: " + (content.length() > 200 ? content.substring(0, 200) + "..." : content));
+                if (content == null || content.isBlank()) {
+                    throw new RuntimeException("AI 返回内容为空");
+                }
+                // 只清理控制字符，保留换行，便于前端按段落展示
+                content = content.replaceAll("[\\p{Cntrl}&&[^\\r\\n\\t]]", "").trim();
                 return content;
             });
         }

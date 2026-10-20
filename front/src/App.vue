@@ -2,8 +2,8 @@
 import { RouterView } from 'vue-router'
 </script>
 <template>
+  <!-- 修复：原来引用了不存在的 <GlobalNoteWidget />，导致 Vue 运行时警告 -->
   <RouterView />
-  <GlobalNoteWidget />
 </template>
 
 <style>

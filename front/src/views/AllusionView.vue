@@ -170,8 +170,7 @@
           <div class="card-body">
             <p class="allusion-meaning">{{ allusion.paraphrase }}</p>
             <div class="allusion-meta">
-              <span class="meta-dynasty">📅 {{ getDynastyName(allusion.dynastyId) }}</span>
-              <span class="meta-person" v-if="allusion.relatedPerson">👤 {{ allusion.relatedPerson }}</span>
+              <span class="meta-dynasty" v-if="getDynastyName(allusion.dynastyId)">📅 {{ getDynastyName(allusion.dynastyId) }}</span>
             </div>
             <div class="allusion-tags">
               <span v-for="theme in getThemes(allusion.themeType)" :key="theme" class="tag" :class="getThemeClass(theme)">
@@ -252,7 +251,7 @@
               <span class="difficulty-badge-large" :class="'difficulty-' + getDifficultyLevel(currentAllusion)">
                 {{ getDifficultyLabel(currentAllusion) }}
               </span>
-              <span class="dynasty-badge">📅 {{ getDynastyName(currentAllusion.dynastyId) }}</span>
+              <span class="dynasty-badge" v-if="getDynastyName(currentAllusion.dynastyId)">📅 {{ getDynastyName(currentAllusion.dynastyId) }}</span>
             </div>
           </div>
           <div class="detail-source" v-if="currentAllusion.source">
@@ -279,20 +278,15 @@
 
         <!-- 典故解读区 -->
         <div class="interpretation-grid">
-          <div class="interpret-card">
+          <div class="interpret-card" v-if="getDynastyDesc(currentAllusion.dynastyId)">
             <div class="interpret-icon">🏛️</div>
             <h4>历史背景</h4>
-            <p>{{ currentAllusion.historicalBackground || '暂无背景信息' }}</p>
+            <p>{{ getDynastyDesc(currentAllusion.dynastyId) }}</p>
           </div>
-          <div class="interpret-card">
-            <div class="interpret-icon">🎭</div>
-            <h4>文化价值</h4>
-            <p>{{ currentAllusion.culturalValue || '暂无文化价值信息' }}</p>
-          </div>
-          <div class="interpret-card">
+          <div class="interpret-card" v-if="currentAllusion.moral">
             <div class="interpret-icon">💡</div>
-            <h4>现代应用</h4>
-            <p>{{ currentAllusion.modernUsage || '暂无现代应用信息' }}</p>
+            <h4>寓意启示</h4>
+            <p>{{ currentAllusion.moral }}</p>
           </div>
         </div>
 
@@ -304,34 +298,44 @@
           </div>
           
           <div class="trace-grid">
-            <!-- 关联人物 -->
-            <div class="trace-card" v-if="currentAllusion.relatedPerson">
+            <!-- 关联人物：与典故同朝代的历史人物（库中无直接关联表，按朝代推导） -->
+            <div class="trace-card" v-if="relatedPersons.length">
               <div class="trace-icon">👤</div>
               <div class="trace-content">
-                <h4>关联人物</h4>
-                <div class="person-trace" @click="jumpToPerson(currentAllusion.relatedPerson)">
-                  <div class="person-name">{{ currentAllusion.relatedPerson }}</div>
-                  <div class="person-role">{{ currentAllusion.relatedPersonRole || '关联人物' }}</div>
+                <h4>同朝人物</h4>
+                <div
+                  v-for="person in relatedPersons"
+                  :key="person.id"
+                  class="person-trace"
+                  @click="jumpToPerson(person.personName)"
+                >
+                  <div class="person-name">{{ person.personName }}</div>
+                  <div class="person-role">{{ person.identityType || '历史人物' }}</div>
                   <span class="trace-link">查看详情 →</span>
                 </div>
               </div>
             </div>
 
-            <!-- 关联事件 -->
-            <div class="trace-card" v-if="currentAllusion.relatedEvent">
+            <!-- 关联事件：与典故同朝代的历史事件 -->
+            <div class="trace-card" v-if="relatedEvents.length">
               <div class="trace-icon">⚡</div>
               <div class="trace-content">
-                <h4>关联事件</h4>
-                <div class="event-trace" @click="jumpToEvent(currentAllusion.relatedEventId)">
-                  <div class="event-name">{{ currentAllusion.relatedEvent }}</div>
-                  <div class="event-year">{{ formatYear(currentAllusion.relatedEventYear) }}</div>
+                <h4>同朝事件</h4>
+                <div
+                  v-for="event in relatedEvents"
+                  :key="event.id"
+                  class="event-trace"
+                  @click="jumpToEvent(event.id)"
+                >
+                  <div class="event-name">{{ event.eventName }}</div>
+                  <div class="event-year">{{ formatYear(event.eventYear) }}</div>
                   <span class="trace-link">查看详情 →</span>
                 </div>
               </div>
             </div>
 
             <!-- 朝代背景 -->
-            <div class="trace-card">
+            <div class="trace-card" v-if="getDynastyName(currentAllusion.dynastyId)">
               <div class="trace-icon">🏛️</div>
               <div class="trace-content">
                 <h4>朝代背景</h4>
@@ -354,21 +358,53 @@
           </button>
         </div>
 
-        <!-- 多媒体拓展 -->
-        <div class="media-section" v-if="currentAllusion.multimediaPath">
+        <!-- 多媒体拓展：按资源类型渲染真实播放器 -->
+        <div class="media-section" v-if="mediaInfo.src">
           <div class="section-title">
             <span class="title-icon">🎵</span>
             <h3>多媒体拓展</h3>
           </div>
-          <div class="media-grid">
-            <div class="media-card" @click="playAudio">
-              <div class="media-icon">🎧</div>
-              <span>典故诵读</span>
+
+          <!-- 视频：动画解读 -->
+          <div class="media-player-box" v-if="mediaInfo.type === 'video'">
+            <video
+              class="media-video"
+              :src="mediaInfo.src"
+              controls
+              preload="metadata"
+              @error="onMediaError('视频')"
+            ></video>
+            <p class="media-caption">📺 动画解读</p>
+          </div>
+
+          <!-- 音频：典故诵读 -->
+          <div class="media-player-box" v-else-if="mediaInfo.type === 'audio'">
+            <div class="audio-wrap">
+              <div class="audio-icon">🎧</div>
+              <div class="audio-main">
+                <p class="audio-title">{{ currentAllusion.allusionName }} · 典故诵读</p>
+                <audio
+                  class="media-audio"
+                  :src="mediaInfo.src"
+                  controls
+                  preload="metadata"
+                  @error="onMediaError('音频')"
+                ></audio>
+              </div>
             </div>
-            <div class="media-card" @click="playVideo">
-              <div class="media-icon">📺</div>
-              <span>动画解读</span>
-            </div>
+          </div>
+
+          <!-- 图片：典故配图 -->
+          <div class="media-player-box" v-else-if="mediaInfo.type === 'image'">
+            <img class="media-image" :src="mediaInfo.src" :alt="currentAllusion.allusionName" />
+            <p class="media-caption">🖼️ 典故配图</p>
+          </div>
+
+          <!-- 其他类型：提供下载/打开入口 -->
+          <div class="media-player-box" v-else>
+            <a class="media-link" :href="mediaInfo.src" target="_blank" rel="noopener">
+              🔗 打开多媒体资源
+            </a>
           </div>
         </div>
       </div>
@@ -418,7 +454,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import topComponent from '@/components/topComponent.vue';
-import request from '@/utils/request';
+import request, { errorMessage, resolveAssetUrl } from '@/utils/request';
 
 const router = useRouter();
 
@@ -446,6 +482,7 @@ const total = ref(0);
 // 数据
 const allAllusions = ref([]);
 const allPersons = ref([]);
+const allEvents = ref([]);
 const loading = ref(false);
 
 // 详情弹窗
@@ -462,7 +499,7 @@ const quizAnswered = ref(false);
 const quizExplanation = ref('');
 const currentQuizAllusion = ref(null);
 
-// 朝代列表
+// 朝代列表（先用内置数据占位，页面加载后由 /dynasty/list/all 覆盖）
 const dynastyList = ref([
   { id: 1, name: "夏朝" }, { id: 2, name: "商朝" }, { id: 3, name: "周朝" },
   { id: 4, name: "秦朝" }, { id: 5, name: "汉朝" }, { id: 6, name: "三国" },
@@ -477,6 +514,30 @@ dynastyList.value.forEach(d => {
   dynastyMap.value[d.id] = d;
 });
 
+/** 加载真实朝代数据（管理端新增/修改朝代后前台同步） */
+async function loadDynastyList() {
+  try {
+    const res = await request.get('/dynasty/list/all');
+    const list = res.data?.code === 200 ? (res.data.data || []) : [];
+    if (list.length === 0) return;
+    dynastyList.value = list.map(d => {
+      const shortName = d.name || '';
+      return {
+        id: d.id,
+        // 数据库里多为简称（“唐”），展示时补成“唐朝”
+        name: /(朝|三国|南北朝|时期|代)$/.test(shortName) ? shortName : `${shortName}朝`,
+        description: d.dynastyDesc || ""
+      };
+    });
+    dynastyMap.value = {};
+    dynastyList.value.forEach(d => {
+      dynastyMap.value[d.id] = d;
+    });
+  } catch (e) {
+    console.warn('加载朝代数据失败，使用内置朝代列表', e);
+  }
+}
+
 // 主题类型列表
 const themeList = ref(['励志', '智慧', '警示', '寓言', '哲理', '战争', '权谋']);
 
@@ -487,27 +548,27 @@ const difficultyList = ref([
   { value: 'hard', label: '精通' }
 ]);
 
-// 统计
-const totalPersons = computed(() => allPersons.value.length);
+// 统计：典故所覆盖朝代内的历史人物数量（真实统计，非随机）
+const coveredDynastyIds = computed(() =>
+  new Set(allAllusions.value.map(a => String(a.dynastyId)).filter(Boolean))
+);
+const totalPersons = computed(() =>
+  allPersons.value.filter(p => coveredDynastyIds.value.has(String(p.dynastyId))).length
+);
 
-// 根据典故内容自动匹配朝代ID
+// 典故 → 朝代：优先取数据库 dynasty_id；库中无值时用内置映射兜底，避免出现“未知朝代”
+const ALLUSION_DYNASTY_FALLBACK = {
+  卧薪尝胆: 3, 纸上谈兵: 4, 破釜沉舟: 4, 草木皆兵: 7, 四面楚歌: 5,
+  完璧归赵: 3, 指鹿为马: 4, 负荆请罪: 3, 悬梁刺股: 3, 凿壁偷光: 5,
+  闻鸡起舞: 7, 程门立雪: 11, 三顾茅庐: 6, 草船借箭: 6, 空城计: 6,
+  乐不思蜀: 6, 望梅止渴: 6, 画蛇添足: 3, 守株待兔: 3, 掩耳盗铃: 3,
+  邯郸学步: 3, 买椟还珠: 3, 狐假虎威: 3, 杯弓蛇影: 7, 对牛弹琴: 8,
+  朝三暮四: 3, 井底之蛙: 3, 叶公好龙: 5, 愚公移山: 3, 精卫填海: 3
+};
+
 function autoMatchDynastyId(allusion) {
-  if (allusion.dynastyId) return allusion.dynastyId;
-  
-  const source = allusion.source || '';
-  const name = allusion.allusionName || '';
-  
-  if (source.includes('战国策')) return 4;
-  if (source.includes('晋书')) return 7;
-  if (source.includes('三国志')) return 6;
-  if (source.includes('列子')) return 3;
-  if (source.includes('韩非子')) return 4;
-  if (source.includes('史记')) {
-    if (name === '卧薪尝胆' || name === '四面楚歌') return 5;
-    return 4;
-  }
-  
-  return 4;
+  if (allusion.dynastyId) return Number(allusion.dynastyId);
+  return ALLUSION_DYNASTY_FALLBACK[allusion.allusionName] || null;
 }
 
 // 筛选后的典故列表
@@ -568,14 +629,38 @@ const paginatedAllusions = computed(() => {
 
 // 获取朝代名称
 function getDynastyName(dynastyId) {
+  if (!dynastyId) return '';
   const dynasty = dynastyMap.value[dynastyId];
-  return dynasty?.name || '未知朝代';
+  return dynasty?.name || '';
 }
 
 // 获取朝代描述
 function getDynastyDesc(dynastyId) {
   return dynastyMap.value[dynastyId]?.description || '该朝代是中国历史上的重要时期';
 }
+
+// 关联人物：与典故同朝代的历史人物；出处/名称里点到的人物优先展示（库中无典故-人物关联表）
+const relatedPersons = computed(() => {
+  const a = currentAllusion.value;
+  if (!a.dynastyId) return [];
+  const key = `${a.allusionName || ''}${a.source || ''}`;
+  return allPersons.value
+    .filter(p => String(p.dynastyId) === String(a.dynastyId))
+    .slice()
+    .sort((x, y) => (key.includes(y.personName) ? 1 : 0) - (key.includes(x.personName) ? 1 : 0))
+    .slice(0, 6);
+});
+
+// 关联事件：与典故同朝代的历史事件，按年份先后排列
+const relatedEvents = computed(() => {
+  const a = currentAllusion.value;
+  if (!a.dynastyId) return [];
+  return allEvents.value
+    .filter(e => String(e.dynastyId) === String(a.dynastyId))
+    .slice()
+    .sort((x, y) => (x.eventYear || 0) - (y.eventYear || 0))
+    .slice(0, 6);
+});
 
 // 解析主题类型
 function getThemes(themeType) {
@@ -669,10 +754,10 @@ function goToPage(page) {
 async function loadAllusions() {
   loading.value = true;
   try {
+    // 后端支持 allusionName/source/themeType 服务端筛选，这里一次性取回后在本地做多条件组合与排序
     const res = await request.get('/allusion/page', {
       params: { pageNum: 1, pageSize: 1000 }
     });
-    console.log('典故列表原始响应:', res);
     
     if (res.data && res.data.code === 200 && res.data.data) {
       let records = res.data.data.records || [];
@@ -684,44 +769,55 @@ async function loadAllusions() {
       
       allAllusions.value = records;
       total.value = res.data.data.total || 0;
-      console.log('典故列表加载成功:', allAllusions.value.length);
-      
-      // 提取所有关联人物
-      const persons = new Set();
-      allAllusions.value.forEach(a => {
-        if (a.relatedPerson) persons.add(a.relatedPerson);
-      });
-      allPersons.value = Array.from(persons);
     } else {
       ElMessage.error(res.data?.msg || '加载失败');
     }
   } catch (error) {
-    console.error('加载典故列表失败:', error);
-    ElMessage.error('加载典故列表失败');
+    ElMessage.error(errorMessage(error, '加载典故列表失败'));
   } finally {
     loading.value = false;
   }
+}
+
+/** 加载全部人物与事件，供“同朝人物 / 同朝事件”溯源展示使用（库中无典故关联表，按朝代推导） */
+async function loadRelationSources() {
+  const dynastyIds = dynastyList.value.map(d => d.id);
+  const [personResults, eventResults] = await Promise.all([
+    Promise.all(dynastyIds.map(id =>
+      request.get('/historical-person/page', { params: { pageNum: 1, pageSize: 1000, dynastyId: id } }).catch(() => null)
+    )),
+    Promise.all(dynastyIds.map(id =>
+      request.get('/historical-event/page', { params: { pageNum: 1, pageSize: 1000, dynastyId: id } }).catch(() => null)
+    ))
+  ]);
+  let personRecords = [];
+  personResults.forEach(res => {
+    if (res?.data?.code === 200) personRecords = personRecords.concat(res.data.data?.records || []);
+  });
+  allPersons.value = personRecords;
+
+  let eventRecords = [];
+  eventResults.forEach(res => {
+    if (res?.data?.code === 200) eventRecords = eventRecords.concat(res.data.data?.records || []);
+  });
+  allEvents.value = eventRecords;
 }
 
 // 加载典故详情
 async function loadAllusionDetail(allusionId) {
   try {
     const res = await request.get(`/allusion/${allusionId}`);
-    console.log('典故详情原始响应:', res);
     if (res.data && res.data.code === 200 && res.data.data) {
       currentAllusion.value = {
         ...res.data.data,
         dynastyId: autoMatchDynastyId(res.data.data)
       };
-      console.log('典故详情加载成功:', currentAllusion.value.allusionName);
       return true;
-    } else {
-      ElMessage.error(res.data?.msg || '加载详情失败');
-      return false;
     }
+    ElMessage.error(res.data?.msg || '加载详情失败');
+    return false;
   } catch (error) {
-    console.error('加载典故详情失败:', error);
-    ElMessage.error('加载典故详情失败');
+    ElMessage.error(errorMessage(error, '加载典故详情失败'));
     return false;
   }
 }
@@ -791,12 +887,27 @@ function answerQuiz(option) {
   quizAnswered.value = true;
 }
 
-function playAudio() {
-  ElMessage.info('音频功能开发中...');
-}
+// 多媒体拓展：按资源后缀判断类型，渲染真实播放器
+const MEDIA_EXT = {
+  audio: ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'oga', 'flac'],
+  video: ['mp4', 'webm', 'ogv', 'mov', 'mkv', 'm4v', 'avi'],
+  image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg']
+};
 
-function playVideo() {
-  ElMessage.info('视频功能开发中...');
+const mediaInfo = computed(() => {
+  const path = currentAllusion.value.multimediaPath;
+  if (!path) return { type: '', src: '' };
+  const src = resolveAssetUrl(path);
+  const ext = (String(path).split('?')[0].split('#')[0].split('.').pop() || '').toLowerCase();
+  let type = 'other';
+  if (MEDIA_EXT.audio.includes(ext)) type = 'audio';
+  else if (MEDIA_EXT.video.includes(ext)) type = 'video';
+  else if (MEDIA_EXT.image.includes(ext)) type = 'image';
+  return { type, src };
+});
+
+function onMediaError(kind) {
+  ElMessage.error(`${kind}资源加载失败，请确认文件已上传且路径正确`);
 }
 
 // 跳转函数
@@ -840,13 +951,10 @@ watch([() => filters.value.dynastyId, () => filters.value.theme, () => filters.v
 
 // 初始化
 onMounted(async () => {
-  // 构建朝代映射
-  dynastyMap.value = {};
-  dynastyList.value.forEach(d => {
-    dynastyMap.value[d.id] = d;
-  });
-  
+  // 先加载真实朝代，再加载典故（朝代筛选依赖 ID 映射），最后拉取人物/事件用于溯源展示
+  await loadDynastyList();
   await loadAllusions();
+  await loadRelationSources();
 });
 </script>
 
@@ -1677,35 +1785,79 @@ onMounted(async () => {
   margin-top: 20px;
 }
 
-.media-grid {
+.media-player-box {
+  padding: 16px;
+  background: rgba(255,215,0,0.06);
+  border: 1px solid rgba(255,215,0,0.25);
+  border-radius: 16px;
+}
+
+.media-video {
+  width: 100%;
+  max-height: 420px;
+  border-radius: 10px;
+  background: #000;
+  display: block;
+}
+
+.media-image {
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #000;
+  display: block;
+}
+
+.audio-wrap {
   display: flex;
+  align-items: center;
   gap: 16px;
 }
 
-.media-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 20px;
-  background: rgba(255,215,0,0.1);
-  border: 1px solid rgba(255,215,0,0.3);
-  border-radius: 40px;
-  cursor: pointer;
+.audio-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.audio-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.audio-title {
+  margin: 0 0 8px;
+  color: #FFD700;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.media-audio {
+  width: 100%;
+}
+
+.media-caption {
+  margin: 10px 0 0;
+  color: #FFD700;
+  font-size: 14px;
+  text-align: center;
+}
+
+.media-link {
+  display: inline-block;
+  padding: 10px 20px;
+  background: rgba(255,215,0,0.12);
+  border: 1px solid rgba(255,215,0,0.35);
+  border-radius: 30px;
+  color: #FFD700;
+  font-size: 14px;
+  text-decoration: none;
   transition: all 0.3s;
 }
 
-.media-card:hover {
-  background: rgba(255,215,0,0.2);
+.media-link:hover {
+  background: rgba(255,215,0,0.24);
   transform: translateY(-2px);
-}
-
-.media-icon {
-  font-size: 24px;
-}
-
-.media-card span {
-  color: #FFD700;
-  font-size: 14px;
 }
 
 /* 弹窗样式 */

@@ -3,6 +3,7 @@ package com.ailab.back.controller;
 import com.ailab.back.DTO.AiChatRequest;
 import com.ailab.back.DTO.AiChatResponse;
 import com.ailab.back.service.AiService;
+import com.ailab.back.utils.UserContext;
 import com.ailab.back.vo.ResultVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -39,6 +40,6 @@ public class AiController {
 
     @PostMapping("/record-interest")
     public ResultVO<Void> recordInterest(@RequestBody Map<String, String> request) {
-        return aiService.recordInterest(1L, request.get("question"));
+        return aiService.recordInterest(UserContext.getUserId(), request.get("question"));
     }
 }

@@ -1,69 +1,108 @@
 package com.ailab.back.service.impl;
 
 import com.ailab.back.service.FileService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.multipart.MultipartFile;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
+/**
+ * 文件上传服务。
+ *
+ * <p>安全修复：
+ * <ul>
+ *   <li>按 resourceType 白名单校验扩展名，禁止上传 .html/.jsp/.svg 等可执行或可脚本的内容；</li>
+ *   <li>校验 Content-Type，双重把关；</li>
+ *   <li>存储目录统一到 upload 目录，不再写入前端源码目录。</li>
+ * </ul>
+ */
+@Slf4j
 @Service
 public class FileServiceImpl implements FileService {
 
-    // 直接从yml配置中注入文件上传物理路径
     @Value("${image.upload.path}")
     private String imageUploadPath;
 
-    // 直接从yml配置中注入前端访问前缀
-    @Value("${image.access.prefix}")
+    @Value("${image.access.prefix:/images/}")
     private String imageAccessPrefix;
+
+    private static final Set<String> IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "gif", "webp", "bmp");
+    private static final Set<String> VIDEO_EXTENSIONS = Set.of("mp4", "webm", "ogg", "mov", "m4v");
+    private static final Set<String> AUDIO_EXTENSIONS = Set.of("mp3", "wav", "m4a", "aac");
 
     @Override
     public String uploadFile(MultipartFile file, String resourceType) throws Exception {
-        // 1. 校验文件是否为空
-        if (file.isEmpty()) {
+        if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("上传的文件不能为空");
         }
 
-        // 2. 校验资源类型（仅允许图片/视频）
-        if (!"图片".equals(resourceType) && !"视频".equals(resourceType)) {
-            throw new IllegalArgumentException("资源类型仅支持：图片/视频");
+        String type = resourceType == null ? "图片" : resourceType.trim();
+        Set<String> allowed;
+        switch (type) {
+            case "图片" -> allowed = IMAGE_EXTENSIONS;
+            case "视频" -> allowed = VIDEO_EXTENSIONS;
+            case "音频" -> allowed = AUDIO_EXTENSIONS;
+            default -> throw new IllegalArgumentException("资源类型仅支持：图片/视频/音频");
         }
 
-        // 3. 获取原始文件名和后缀
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null || !originalFilename.contains(".")) {
-            throw new IllegalArgumentException("文件名称不合法，无后缀");
+            throw new IllegalArgumentException("文件名称不合法，缺少后缀");
         }
-        String suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
+        String suffix = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase(Locale.ROOT);
+        if (!allowed.contains(suffix)) {
+            throw new IllegalArgumentException("不支持的文件类型：." + suffix
+                    + "，" + type + "仅支持：" + String.join("/", allowed));
+        }
 
-        // 4. 生成UUID新文件名
-        String newFileName = UUID.randomUUID().toString().replace("-", "") + suffix;
-
-        // 5. 处理存储路径（去除file:前缀，拼接完整路径）
-        String uploadPath = imageUploadPath.replace("file:", "");
-        File saveDir = new File(uploadPath);
-        // 确保目录存在，不存在则创建
-        if (!saveDir.exists()) {
-            boolean mkdirs = saveDir.mkdirs();
-            if (!mkdirs) {
-                throw new IOException("创建文件存储目录失败：" + uploadPath);
+        // Content-Type 二次校验（部分浏览器对 webp 等会给空值，空则跳过）
+        String contentType = file.getContentType();
+        if (contentType != null && !contentType.isBlank()) {
+            String major = contentType.substring(0, Math.min(contentType.length(), 5));
+            if ("图片".equals(type) && !contentType.startsWith("image/")) {
+                throw new IllegalArgumentException("文件内容不是图片");
+            }
+            if ("视频".equals(type) && !contentType.startsWith("video/")) {
+                throw new IllegalArgumentException("文件内容不是视频");
+            }
+            if ("音频".equals(type) && !contentType.startsWith("audio/")) {
+                throw new IllegalArgumentException("文件内容不是音频");
             }
         }
 
-        // 6. 拼接最终存储文件路径
-        File saveFile = new File(saveDir, newFileName);
+        File saveDir = resolveUploadDir();
+        if (!saveDir.exists() && !saveDir.mkdirs()) {
+            throw new IOException("创建文件存储目录失败：" + saveDir.getAbsolutePath());
+        }
 
-        // 7. 保存文件到指定路径
+        String newFileName = UUID.randomUUID().toString().replace("-", "") + "." + suffix;
+        File saveFile = new File(saveDir, newFileName);
         try {
             file.transferTo(saveFile);
         } catch (IOException e) {
             throw new IOException("文件保存失败：" + e.getMessage(), e);
         }
+        log.info("文件上传成功: {} -> {}", originalFilename, saveFile.getAbsolutePath());
 
-        // 8. 拼接前端访问路径（访问前缀 + 新文件名）
-        return imageAccessPrefix + newFileName;
+        String prefix = imageAccessPrefix.endsWith("/") ? imageAccessPrefix : imageAccessPrefix + "/";
+        return prefix + newFileName;
+    }
+
+    /** 解析上传目录：去掉 file: 前缀并转为绝对路径 */
+    private File resolveUploadDir() {
+        String p = imageUploadPath == null ? "" : imageUploadPath.trim();
+        if (p.startsWith("file:")) {
+            p = p.substring("file:".length());
+        }
+        Path path = Paths.get(p).toAbsolutePath().normalize();
+        return path.toFile();
     }
 }

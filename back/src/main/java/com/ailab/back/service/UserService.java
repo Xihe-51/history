@@ -47,4 +47,12 @@ public interface UserService extends IService<User> {
      * 根据id删除用户
      * */
     ResultVO<User> deleteUserById(Long id);
+
+    /**
+     * 修改当前登录用户密码（需要校验原密码）
+     * @param oldPassword 原密码（明文）
+     * @param newPassword 新密码（明文，至少6位）
+     * @return 修改结果
+     */
+    ResultVO<?> changePassword(String oldPassword, String newPassword);
 }

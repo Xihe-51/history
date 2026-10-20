@@ -2,264 +2,275 @@ package com.ailab.back.service.impl;
 
 import com.ailab.back.service.DataService;
 import com.ailab.back.vo.ResultVO;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * 数据备份/恢复服务。
+ *
+ * <p>关键修复：原实现用 {@code ClassLoader.getResource("").getPath()} 定位备份目录，
+ * 在打成 jar 运行时会得到 {@code ...jar!/BOOT-INF/classes!/db} 这种非法路径，
+ * 导致备份/列表/恢复全部失败。现改为：
+ * <ul>
+ *   <li>优先使用配置项 {@code db.backup.dir}（绝对路径）；</li>
+ *   <li>未配置时使用“应用启动目录/db”，开发与生产都能稳定读写；</li>
+ * </ul>
+ */
+@Slf4j
 @Service
 public class DataServiceImpl implements DataService {
 
-    // ===== 从YAML读取配置 =====
-    // 数据源配置
     @Value("${spring.datasource.url}")
     private String dbUrl;
+
     @Value("${spring.datasource.username}")
     private String dbUsername;
+
     @Value("${spring.datasource.password}")
     private String dbPassword;
 
-    // 备份配置
-    @Value("${db.backup.save-path}")
-    private String backupSavePath;
-    @Value("${db.backup.date-format}")
+    /** 备份目录（绝对路径或相对于启动目录），留空则使用 ./db */
+    @Value("${db.backup.dir:db}")
+    private String backupDir;
+
+    @Value("${db.backup.date-format:yyyy-MM-dd HH-mm-ss}")
     private String backupDateFormat;
 
-    // 正则表达式：匹配符合命名规范的备份文件名（yyyy-MM-dd HH-mm-ss.sql）
-    private static final Pattern BACKUP_FILE_PATTERN = Pattern.compile("^\\d{4}-\\d{2}-\\d{2} \\d{2}-\\d{2}-\\d{2}\\.sql$");
+    /** mysqldump / mysql 命令路径，默认走环境变量 PATH */
+    @Value("${db.backup.mysqldump:mysqldump}")
+    private String mysqldumpCmd;
 
-    // ====================== 已实现的备份方法 ======================
+    @Value("${db.backup.mysql:mysql}")
+    private String mysqlCmd;
+
+    /** 备份单次执行超时时间（秒） */
+    @Value("${db.backup.timeout-seconds:120}")
+    private int timeoutSeconds;
+
+    private static final Pattern BACKUP_FILE_PATTERN =
+            Pattern.compile("^\\d{4}-\\d{2}-\\d{2} \\d{2}-\\d{2}-\\d{2}\\.sql$");
+
+    // ====================== 备份 ======================
     @Override
     public ResultVO<?> backupData() {
         try {
-            // 1. 解析数据库URL，提取数据库名、主机、端口
-            Pattern dbNamePattern = Pattern.compile("jdbc:mysql://.*?/(.*?)\\?");
-            Matcher dbNameMatcher = dbNamePattern.matcher(dbUrl);
-            String dbName = "";
-            if (dbNameMatcher.find()) {
-                dbName = dbNameMatcher.group(1);
-            } else {
-                return ResultVO.error("解析数据库名称失败，请检查spring.datasource.url配置");
+            DbInfo db = parseDbInfo();
+            if (db == null) {
+                return ResultVO.error("解析数据库连接信息失败，请检查 spring.datasource.url 配置");
             }
+            File dir = ensureBackupDir();
+            String fileName = new SimpleDateFormat(backupDateFormat).format(new Date()) + ".sql";
+            File backupFile = new File(dir, fileName);
 
-            String host = "localhost";
-            String port = "3306";
-            Pattern hostPortPattern = Pattern.compile("jdbc:mysql://(.*?):(\\d+)/");
-            Matcher hpMatcher = hostPortPattern.matcher(dbUrl);
-            if (hpMatcher.find()) {
-                host = hpMatcher.group(1);
-                port = hpMatcher.group(2);
+            List<String> cmd = new ArrayList<>(List.of(
+                    mysqldumpCmd,
+                    "-h", db.host,
+                    "-P", db.port,
+                    "-u", dbUsername,
+                    "--single-transaction",
+                    "--default-character-set=utf8mb4",
+                    "--databases", db.name,
+                    "--result-file=" + backupFile.getAbsolutePath()
+            ));
+            CmdResult result = run(cmd, dbPassword);
+            if (result.exitCode != 0) {
+                return ResultVO.error("数据库备份失败，退出码：" + result.exitCode
+                        + "\n排查方向：1.mysqldump 是否配置环境变量；2.数据库账号密码是否正确；3.备份目录是否有写权限"
+                        + (result.output.isBlank() ? "" : "\n详情：" + result.output));
             }
-
-            // 2. 生成带时间戳的备份文件名
-            SimpleDateFormat sdf = new SimpleDateFormat(backupDateFormat);
-            String currentTime = sdf.format(new Date());
-            String fileName = currentTime + ".sql";
-
-            // 3. 构建完整的备份文件路径
-            String resourcePath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
-
-            resourcePath = java.net.URLDecoder.decode(resourcePath, "UTF-8");
-            File backupDir = new File(resourcePath + backupSavePath);
-            if (!backupDir.exists()) {
-                boolean mkdirSuccess = backupDir.mkdirs();
-                if (!mkdirSuccess) {
-                    return ResultVO.error("创建备份目录失败：" + backupDir.getAbsolutePath());
-                }
+            if (!backupFile.exists() || backupFile.length() == 0) {
+                return ResultVO.error("数据库备份失败：备份文件为空，请检查 mysqldump 权限");
             }
-            String backupFilePath = backupDir.getAbsolutePath() + File.separator + fileName;
-            // 4. 执行备份命令
-            String[] cmd = new String[]{
-                    "mysqldump",
-                    "-h" + host,
-                    "-P" + port,
-                    "-u" + dbUsername,
-                    "-p" + dbPassword,
-                    "--databases", dbName,
-                    "--result-file=" + backupFilePath
-            };
-
-            Process process = Runtime.getRuntime().exec(cmd);
-            int exitCode = process.waitFor();
-
-            if (exitCode == 0) {
-                return ResultVO.success("数据库备份成功，文件路径：" + backupFilePath);
-            } else {
-                return ResultVO.error("数据库备份失败，退出码：" + exitCode +
-                        "\n排查方向：1.mysqldump是否配置环境变量；2.数据库账号密码是否正确；3.目录是否有读写权限");
-            }
-
+            return ResultVO.success("数据库备份成功，文件路径：" + backupFile.getAbsolutePath());
         } catch (IOException e) {
-            return ResultVO.error("IO异常：" + e.getMessage() + "\n常见原因：mysqldump未配置到环境变量，或备份目录无写入权限");
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return ResultVO.error("备份进程被中断：" + e.getMessage());
+            return ResultVO.error("IO异常：" + e.getMessage()
+                    + "\n常见原因：mysqldump 未配置到环境变量，或备份目录无写入权限");
         } catch (Exception e) {
+            log.error("备份失败", e);
             return ResultVO.error("备份失败：" + e.getMessage());
         }
     }
 
-    // ====================== 新增：恢复数据库 ======================
+    // ====================== 恢复 ======================
     @Override
     public ResultVO<?> recoverData(String filename) {
         try {
-            // 1. 参数校验
             if (filename == null || filename.trim().isEmpty()) {
                 return ResultVO.error("文件名不能为空");
             }
             if (!BACKUP_FILE_PATTERN.matcher(filename).matches()) {
                 return ResultVO.error("文件名不符合规范（格式：yyyy-MM-dd HH-mm-ss.sql）");
             }
-
-            // 2. 拼接备份文件完整路径
-            String resourcePath = this.getClass().getClassLoader().getResource("").getPath();
-            resourcePath = java.net.URLDecoder.decode(resourcePath, "UTF-8");
-            File backupFile = new File(resourcePath + backupSavePath + File.separator + filename);
-
-            // 3. 检查文件是否存在
+            File backupFile = new File(ensureBackupDir(), filename);
             if (!backupFile.exists() || !backupFile.isFile()) {
                 return ResultVO.error("备份文件不存在：" + backupFile.getAbsolutePath());
             }
-
-            // 4. 解析数据库连接信息
-            Pattern dbNamePattern = Pattern.compile("jdbc:mysql://.*?/(.*?)\\?");
-            Matcher dbNameMatcher = dbNamePattern.matcher(dbUrl);
-            String dbName = "";
-            if (dbNameMatcher.find()) {
-                dbName = dbNameMatcher.group(1);
-            } else {
-                return ResultVO.error("解析数据库名称失败，请检查spring.datasource.url配置");
+            DbInfo db = parseDbInfo();
+            if (db == null) {
+                return ResultVO.error("解析数据库连接信息失败，请检查 spring.datasource.url 配置");
             }
 
-            String host = "localhost";
-            String port = "3306";
-            Pattern hostPortPattern = Pattern.compile("jdbc:mysql://(.*?):(\\d+)/");
-            Matcher hpMatcher = hostPortPattern.matcher(dbUrl);
-            if (hpMatcher.find()) {
-                host = hpMatcher.group(1);
-                port = hpMatcher.group(2);
+            // 通过标准输入导入 SQL，避免 -e "source xxx" 在带空格路径下失效
+            List<String> cmd = List.of(
+                    mysqlCmd,
+                    "-h", db.host,
+                    "-P", db.port,
+                    "-u", dbUsername,
+                    "--default-character-set=utf8mb4",
+                    db.name
+            );
+            Process process = startProcess(cmd, dbPassword);
+            try (InputStream in = Files.newInputStream(backupFile.toPath());
+                 var out = process.getOutputStream()) {
+                in.transferTo(out);
             }
-
-            // 5. 构建恢复命令（mysql命令执行sql文件）
-            String[] cmd = new String[]{
-                    "mysql",
-                    "-h" + host,
-                    "-P" + port,
-                    "-u" + dbUsername,
-                    "-p" + dbPassword,
-                    dbName,
-                    "-e", "source " + backupFile.getAbsolutePath().replace("\\", "\\\\")
-            };
-
-            // 6. 执行恢复命令
-            Process process = Runtime.getRuntime().exec(cmd);
+            String output = readOutput(process);
             int exitCode = process.waitFor();
-
-            if (exitCode == 0) {
-                return ResultVO.success("数据库恢复成功，恢复文件：" + backupFile.getAbsolutePath());
-            } else {
-                return ResultVO.error("数据库恢复失败，退出码：" + exitCode +
-                        "\n排查方向：1.mysql是否配置环境变量；2.文件是否损坏；3.数据库账号是否有写入权限");
+            if (exitCode != 0) {
+                return ResultVO.error("数据库恢复失败，退出码：" + exitCode
+                        + "\n排查方向：1.mysql 是否配置环境变量；2.文件是否损坏；3.数据库账号是否有写入权限"
+                        + (output.isBlank() ? "" : "\n详情：" + output));
             }
-
+            return ResultVO.success("数据库恢复成功，恢复文件：" + backupFile.getAbsolutePath());
         } catch (IOException e) {
-            return ResultVO.error("IO异常：" + e.getMessage() + "\n常见原因：mysql未配置到环境变量，或文件无读取权限");
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return ResultVO.error("恢复进程被中断：" + e.getMessage());
+            return ResultVO.error("IO异常：" + e.getMessage() + "\n常见原因：mysql 未配置到环境变量，或文件无读取权限");
         } catch (Exception e) {
+            log.error("恢复失败", e);
             return ResultVO.error("恢复失败：" + e.getMessage());
         }
     }
 
-    // ====================== 新增：删除备份文件 ======================
+    // ====================== 删除备份 ======================
     @Override
     public ResultVO<?> deleteData(String filename) {
         try {
-            // 1. 参数校验
             if (filename == null || filename.trim().isEmpty()) {
                 return ResultVO.error("文件名不能为空");
             }
-
-            // 2. 拼接文件完整路径
-            String resourcePath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
-            resourcePath = java.net.URLDecoder.decode(resourcePath, StandardCharsets.UTF_8);
-            File backupFile = new File(resourcePath + backupSavePath + File.separator + filename);
-
-            // 3. 检查文件是否存在
+            if (!BACKUP_FILE_PATTERN.matcher(filename).matches()) {
+                return ResultVO.error("文件名不符合规范（格式：yyyy-MM-dd HH-mm-ss.sql）");
+            }
+            File backupFile = new File(ensureBackupDir(), filename);
             if (!backupFile.exists() || !backupFile.isFile()) {
                 return ResultVO.error("备份文件不存在：" + backupFile.getAbsolutePath());
             }
-
-            // 4. 删除文件
-            boolean deleteSuccess = backupFile.delete();
-            if (deleteSuccess) {
+            if (backupFile.delete()) {
                 return ResultVO.success("备份文件删除成功：" + filename);
-            } else {
-                return ResultVO.error("备份文件删除失败，可能是文件被占用或无删除权限");
             }
-
+            return ResultVO.error("备份文件删除失败，可能是文件被占用或无删除权限");
         } catch (Exception e) {
             return ResultVO.error("删除失败：" + e.getMessage());
         }
     }
 
-    // ====================== 获取文件列表 ======================
+    // ====================== 文件列表 ======================
     @Override
     public ResultVO<?> getFileList() {
         try {
-            // 1. 获取备份目录路径
-            String resourcePath = Objects.requireNonNull(this.getClass().getClassLoader().getResource("")).getPath();
-            resourcePath = java.net.URLDecoder.decode(resourcePath, StandardCharsets.UTF_8);
-            File backupDir = new File(resourcePath + backupSavePath);
-
-            // 2. 检查目录是否存在，不存在则创建并返回空列表
-            if (!backupDir.exists()) {
-                backupDir.mkdirs();
-                return ResultVO.success(Collections.emptyList().toString());
-            }
-
-            // 3. 遍历目录，筛选符合命名规范的sql文件
-            File[] files = backupDir.listFiles((dir, name) -> BACKUP_FILE_PATTERN.matcher(name).matches());
-            if (files == null || files.length == 0) {
-                return ResultVO.success(Collections.emptyList().toString());
-            }
-
-            // 4. 封装文件信息（文件名、文件大小（字节）、文件大小（友好显示））
+            File dir = ensureBackupDir();
+            File[] files = dir.listFiles((d, name) -> BACKUP_FILE_PATTERN.matcher(name).matches());
             List<Map<String, Object>> fileList = new ArrayList<>();
-            for (File file : files) {
-                Map<String, Object> fileInfo = new HashMap<>();
-                fileInfo.put("fileName", file.getName());
-                fileInfo.put("fileSize", file.length()); // 原始大小（字节）
-                fileInfo.put("fileSizeStr", formatFileSize(file.length())); // 友好显示（如1.2MB）
-                fileInfo.put("createTime", new Date(file.lastModified())); // 文件最后修改时间（近似创建时间）
-                fileList.add(fileInfo);
+            if (files != null) {
+                Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+                for (File file : files) {
+                    Map<String, Object> info = new LinkedHashMap<>();
+                    info.put("fileName", file.getName());
+                    info.put("fileSize", file.length());
+                    info.put("fileSizeStr", formatFileSize(file.length()));
+                    info.put("createTime", new Date(file.lastModified()));
+                    fileList.add(info);
+                }
             }
-
-            // 5. 按文件创建时间倒序排序（最新的备份在最前面）
-            fileList.sort((o1, o2) -> {
-                Date time1 = (Date) o1.get("createTime");
-                Date time2 = (Date) o2.get("createTime");
-                return time2.compareTo(time1);
-            });
-
             return ResultVO.success().setData(fileList);
-
         } catch (Exception e) {
             return ResultVO.error("获取备份文件列表失败：" + e.getMessage());
         }
     }
 
-    // 辅助方法：格式化文件大小（字节转友好显示）
+    // ====================== 辅助 ======================
+
+    private File ensureBackupDir() throws IOException {
+        String dir = (backupDir == null || backupDir.isBlank()) ? "db" : backupDir.trim();
+        if (dir.startsWith("file:")) {
+            dir = dir.substring("file:".length());
+        }
+        Path path = Paths.get(dir).toAbsolutePath().normalize();
+        File f = path.toFile();
+        if (!f.exists() && !f.mkdirs()) {
+            throw new IOException("创建备份目录失败：" + f.getAbsolutePath());
+        }
+        return f;
+    }
+
+    private record DbInfo(String host, String port, String name) {
+    }
+
+    private DbInfo parseDbInfo() {
+        try {
+            Matcher m = Pattern.compile("jdbc:mysql://([^/:?]+)(?::(\\d+))?/([^?;]+)").matcher(dbUrl);
+            if (!m.find()) {
+                return null;
+            }
+            String host = m.group(1);
+            String port = m.group(2) == null ? "3306" : m.group(2);
+            String name = m.group(3);
+            return new DbInfo(host, port, name);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private record CmdResult(int exitCode, String output) {
+    }
+
+    private Process startProcess(List<String> cmd, String password) throws IOException {
+        // 使用 MYSQL_PWD 传递密码，避免密码出现在进程命令行（ps 可见）以及 -p 与密码粘连问题
+        ProcessBuilder pb = new ProcessBuilder(cmd);
+        Map<String, String> env = pb.environment();
+        if (password != null) {
+            env.put("MYSQL_PWD", password);
+        }
+        pb.redirectErrorStream(true);
+        return pb.start();
+    }
+
+    private CmdResult run(List<String> cmd, String password) throws IOException, InterruptedException {
+        Process process = startProcess(cmd, password);
+        String output = readOutput(process);
+        boolean finished = process.waitFor(timeoutSeconds, java.util.concurrent.TimeUnit.SECONDS);
+        if (!finished) {
+            process.destroyForcibly();
+            throw new IOException("命令执行超时（" + timeoutSeconds + "秒）：" + cmd.get(0));
+        }
+        return new CmdResult(process.exitValue(), output);
+    }
+
+    private String readOutput(Process process) throws IOException {
+        try (InputStream in = process.getInputStream()) {
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8).trim();
+        }
+    }
+
     private String formatFileSize(long size) {
-        if (size <= 0) return "0 B";
+        if (size <= 0) {
+            return "0 B";
+        }
         final String[] units = {"B", "KB", "MB", "GB", "TB"};
         int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
+        digitGroups = Math.min(digitGroups, units.length - 1);
         return String.format("%.2f %s", size / Math.pow(1024, digitGroups), units[digitGroups]);
     }
 }

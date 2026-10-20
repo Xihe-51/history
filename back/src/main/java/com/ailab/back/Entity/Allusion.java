@@ -18,6 +18,9 @@ public class Allusion {
     // 出处（古籍名称）
     private String source;
 
+    // 所属朝代ID
+    private Long dynastyId;
+
     // 原文
     private String originalText;
 

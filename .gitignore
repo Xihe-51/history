@@ -14,6 +14,12 @@ dist-ssr
 coverage
 *.local
 
+# 后端运行时上传目录（由程序写入，不属于源码）
+back/upload/
+
+# 开发期调试产物：截图 / DOM dump / 临时分析脚本
+.shots/
+
 /cypress/videos/
 /cypress/screenshots/
 

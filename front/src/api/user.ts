@@ -70,3 +70,21 @@ export const deleteUserById = (id: number | string) => {
 export const getUserById = (id: number | string) => {
     return request.get(`/user/user/${id}`);
 }
+
+/**
+ * 获取当前登录用户信息（无需自己解析 token）
+ * @returns 当前登录用户的完整信息
+ */
+export const getCurrentUser = () => {
+    return request.get("/user/me");
+}
+
+/**
+ * 修改当前登录用户密码（需要原密码）
+ * @param oldPassword - 原密码（明文）
+ * @param newPassword - 新密码（明文）
+ * @returns 修改结果
+ */
+export const changePassword = (oldPassword: string, newPassword: string) => {
+    return request.put("/user/password", { oldPassword, newPassword });
+}

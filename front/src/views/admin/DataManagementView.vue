@@ -52,42 +52,41 @@ import { ref, reactive, onMounted, computed } from 'vue';
 import { getFileList, recoverData, backupData, deleteData } from '@/api/data';
 import { ElMessage, ElEmpty } from 'element-plus';
 
-const recovering = ref(false);
+// 添加类型定义
+interface BackupItem {
+    fileName: string;
+    fileSize: number;
+    createTime: string;
+}
 
-const tableData = ref([]);
+const recovering = ref(false);
+const tableData = ref<BackupItem[]>([]);  // 添加泛型
 
 // 时间格式化工具函数
 const formatDateTime = (dateStr: string) => {
     if (!dateStr) return '';
     try {
         const date = new Date(dateStr);
-        // 获取年、月、日
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
-        // 获取时、分、秒
         const hours = String(date.getHours()).padStart(2, '0');
         const minutes = String(date.getMinutes()).padStart(2, '0');
         const seconds = String(date.getSeconds()).padStart(2, '0');
-        // 拼接成 yyyy-mm-dd hh:mm:ss 格式
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     } catch (error) {
         console.error('时间格式化失败:', error);
-        return dateStr; // 格式化失败时返回原始值
+        return dateStr;
     }
 };
 
-// 格式化表格数据，包含文件大小和时间格式转换
+// 格式化表格数据 - 修复类型错误
 const formattedTableData = computed(() => {
-    return tableData.value.map(item => {
-        return {
-            ...item,
-            // 转换字节为KB，保留两位小数
-            fileSize: item.fileSize ? (item.fileSize / 1024).toFixed(2) : '0.00',
-            // 转换时间格式为 yyyy-mm-dd hh:mm:ss
-            createTime: formatDateTime(item.createTime)
-        };
-    });
+    return tableData.value.map((item: BackupItem) => ({
+        ...item,
+        fileSize: item.fileSize ? (item.fileSize / 1024).toFixed(2) : '0.00',
+        createTime: formatDateTime(item.createTime)
+    }));
 });
 
 // 表格头部样式
@@ -167,7 +166,6 @@ onMounted(() => {
     fetchData();
 });
 </script>
-
 <style scoped>
 /* 整体布局 */
 .backup-layout {
