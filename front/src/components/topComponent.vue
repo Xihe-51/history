@@ -4,7 +4,7 @@
             <div class="header-left">
                 <div class="logo-section">
                     <img src="@/assets/logo.jpg" width="40" height="40">
-                    <h1 class="app-title">华夏天澜 · 历史科普系统</h1>
+                    <h1 class="app-title">寰宇古今长廊 · 历史科普系统</h1>
                 </div>
 
                 <nav class="main-nav">

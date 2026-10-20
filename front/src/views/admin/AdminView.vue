@@ -5,7 +5,7 @@
                 <!-- 网站Logo -->
                 <div class="logo">
                     <img src="@/assets/logo.jpg" alt="历史科普" width="40" height="40" />
-                    <span class="logo-text">华夏天澜 · 历史科普系统管理端</span>
+                    <span class="logo-text">寰宇古今长廊 · 历史科普系统管理端</span>
                 </div>
             </div>
             <div class="header-right">

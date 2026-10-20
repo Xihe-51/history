@@ -4,7 +4,7 @@
     <div class="auth-card">
       <!-- Logo区域 -->
       <div class="logo-wrapper">
-        <h2 class="title">华夏天澜</h2>
+        <h2 class="title">寰宇古今长廊</h2>
       </div>
 
       <!-- 表单区域 -->
